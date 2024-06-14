@@ -21,7 +21,6 @@ import { createPortal } from 'react-dom';
 import { Map as YMap } from 'yjs';
 
 import { openQuickSearchModalAtom, openSettingModalAtom } from '../atoms';
-import { WorkspaceAIOnboarding } from '../components/affine/ai-onboarding';
 import { AppContainer } from '../components/affine/app-container';
 import { SyncAwareness } from '../components/affine/awareness';
 import {
@@ -99,7 +98,6 @@ export const WorkspaceLayout = function WorkspaceLayout({
       <Suspense fallback={<WorkspaceFallback />}>
         <WorkspaceLayoutInner>{children}</WorkspaceLayoutInner>
         {/* should show after workspace loaded */}
-        <WorkspaceAIOnboarding />
       </Suspense>
     </SWRConfigProvider>
   );
