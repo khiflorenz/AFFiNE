@@ -392,6 +392,7 @@ type Mutation {
   """Create a subscription checkout link of stripe"""
   createCheckoutSession(input: CreateCheckoutSessionInput!): String!
 
+<<<<<<< HEAD
   """Create a chat message"""
   createCopilotMessage(options: CreateChatMessageInput!): String!
 
@@ -401,6 +402,8 @@ type Mutation {
   """Create a chat session"""
   createCopilotSession(options: CreateChatSessionInput!): String!
 
+=======
+>>>>>>> stable
   """Create a stripe customer portal to manage payment methods"""
   createCustomerPortal: String!
 
@@ -531,13 +534,6 @@ type Query {
 
   """Get all accessible workspaces for current user"""
   workspaces: [WorkspaceType!]!
-}
-
-input QueryChatHistoriesInput {
-  action: Boolean
-  limit: Int
-  sessionId: String
-  skip: Int
 }
 
 type QuotaQueryType {
@@ -753,7 +749,6 @@ type UserSubscription {
 type UserType {
   """User avatar url"""
   avatarUrl: String
-  copilot(workspaceId: String): Copilot!
 
   """User email verified"""
   createdAt: DateTime @deprecated(reason: "useless")
