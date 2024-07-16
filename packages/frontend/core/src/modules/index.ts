@@ -11,9 +11,7 @@ import { configurePeekViewModule } from './peek-view';
 import { configurePermissionsModule } from './permissions';
 import { configureWorkspacePropertiesModule } from './properties';
 import { configureQuickSearchModule } from './quicksearch';
-import { configureRightSidebarModule } from './right-sidebar';
 import { configureShareDocsModule } from './share-doc';
-import { configureStorageImpls } from './storage';
 import { configureTagModule } from './tag';
 import { configureTelemetryModule } from './telemetry';
 import { configureWorkbenchModule } from './workbench';
@@ -22,7 +20,6 @@ export function configureCommonModules(framework: Framework) {
   configureInfraModules(framework);
   configureCollectionModule(framework);
   configureNavigationModule(framework);
-  configureRightSidebarModule(framework);
   configureTagModule(framework);
   configureWorkbenchModule(framework);
   configureWorkspacePropertiesModule(framework);
@@ -36,8 +33,4 @@ export function configureCommonModules(framework: Framework) {
   configureQuickSearchModule(framework);
   configureDocsSearchModule(framework);
   configureDocLinksModule(framework);
-}
-
-export function configureImpls(framework: Framework) {
-  configureStorageImpls(framework);
 }

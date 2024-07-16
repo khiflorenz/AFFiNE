@@ -46,6 +46,7 @@ import { SyncAwareness } from '../components/affine/awareness';
 import { appSidebarResizingAtom } from '../components/app-sidebar';
 import { usePageHelper } from '../components/blocksuite/block-suite-page-list/utils';
 import type { DraggableTitleCellData } from '../components/page-list';
+import { AIIsland } from '../components/pure/ai-island';
 import { RootAppSidebar } from '../components/root-app-sidebar';
 import { MainContainer } from '../components/workspace';
 import { WorkspaceUpgrade } from '../components/workspace-upgrade';
@@ -80,6 +81,7 @@ export const WorkspaceLayout = function WorkspaceLayout({
       <CurrentWorkspaceModals />
       <WorkspaceLayoutInner>{children}</WorkspaceLayoutInner>
       {/* should show after workspace loaded */}
+      <AIIsland />
     </SWRConfigProvider>
   );
 };

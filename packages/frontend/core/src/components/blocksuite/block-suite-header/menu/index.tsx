@@ -6,7 +6,10 @@ import {
   MenuSeparator,
   MenuSub,
 } from '@affine/component/ui/menu';
-import { openHistoryTipsModalAtom } from '@affine/core/atoms';
+import {
+  openHistoryTipsModalAtom,
+  openInfoModalAtom,
+} from '@affine/core/atoms';
 import { PageHistoryModal } from '@affine/core/components/affine/page-history-modal';
 import { ShareMenuContent } from '@affine/core/components/affine/share-page-modal/share-menu';
 import { Export, MoveToTrash } from '@affine/core/components/page-list';
@@ -27,6 +30,7 @@ import {
   FavoriteIcon,
   HistoryIcon,
   ImportIcon,
+  InformationIcon,
   PageIcon,
   ShareIcon,
 } from '@blocksuite/icons/rc';
@@ -48,16 +52,18 @@ type PageMenuProps = {
   rename?: () => void;
   page: Doc;
   isJournal?: boolean;
+  containerWidth: number;
 };
 // fixme: refactor this file
 export const PageHeaderMenuButton = ({
   rename,
   page,
   isJournal,
+  containerWidth,
 }: PageMenuProps) => {
   const pageId = page?.id;
   const t = useI18n();
-  const { hideShare } = useDetailPageHeaderResponsive();
+  const { hideShare } = useDetailPageHeaderResponsive(containerWidth);
   const confirmEnableCloud = useEnableCloud();
 
   const workspace = useService(WorkspaceService).workspace;
@@ -82,6 +88,11 @@ export const PageHeaderMenuButton = ({
     }
     return setOpenHistoryTipsModal(true);
   }, [setOpenHistoryTipsModal, workspace.flavour]);
+
+  const setOpenInfoModal = useSetAtom(openInfoModalAtom);
+  const openInfoModal = () => {
+    setOpenInfoModal(true);
+  };
 
   const handleOpenTrashModal = useCallback(() => {
     setTrashModal({
@@ -110,7 +121,7 @@ export const PageHeaderMenuButton = ({
     duplicate(pageId);
     mixpanel.track('DocCreated', {
       segment: 'editor header',
-      page: doc.mode$.value === 'page' ? 'page editor' : 'edgeless editor',
+      page: doc.mode$.value === 'page' ? 'doc editor' : 'edgeless editor',
       module: 'header menu',
       control: 'copy doc',
       type: 'doc duplicate',
@@ -123,7 +134,7 @@ export const PageHeaderMenuButton = ({
     if (options.isWorkspaceFile) {
       mixpanel.track('WorkspaceCreated', {
         segment: 'editor header',
-        page: doc.mode$.value === 'page' ? 'page editor' : 'edgeless editor',
+        page: doc.mode$.value === 'page' ? 'doc editor' : 'edgeless editor',
         module: 'header menu',
         control: 'import button',
         type: 'imported workspace',
@@ -131,7 +142,7 @@ export const PageHeaderMenuButton = ({
     } else {
       mixpanel.track('DocCreated', {
         segment: 'editor header',
-        page: doc.mode$.value === 'page' ? 'page editor' : 'edgeless editor',
+        page: doc.mode$.value === 'page' ? 'doc editor' : 'edgeless editor',
         module: 'header menu',
         control: 'import button',
         type: 'imported doc',
@@ -236,6 +247,33 @@ export const PageHeaderMenuButton = ({
         {t['com.affine.header.option.add-tag']()}
       </MenuItem> */}
       <MenuSeparator />
+      {runtimeConfig.enableInfoModal && (
+        <MenuItem
+          preFix={
+            <MenuIcon>
+              <InformationIcon />
+            </MenuIcon>
+          }
+          data-testid="editor-option-menu-info"
+          onSelect={openInfoModal}
+          style={menuItemStyle}
+        >
+          {t['com.affine.page-properties.page-info.view']()}
+        </MenuItem>
+      )}
+      <MenuItem
+        preFix={
+          <MenuIcon>
+            <HistoryIcon />
+          </MenuIcon>
+        }
+        data-testid="editor-option-menu-history"
+        onSelect={openHistoryModal}
+        style={menuItemStyle}
+      >
+        {t['com.affine.history.view-history-version']()}
+      </MenuItem>
+      <MenuSeparator />
       {!isJournal && (
         <MenuItem
           preFix={
@@ -263,22 +301,6 @@ export const PageHeaderMenuButton = ({
         {t['Import']()}
       </MenuItem>
       <Export exportHandler={exportHandler} pageMode={currentMode} />
-
-      {runtimeConfig.enablePageHistory ? (
-        <MenuItem
-          preFix={
-            <MenuIcon>
-              <HistoryIcon />
-            </MenuIcon>
-          }
-          data-testid="editor-option-menu-history"
-          onSelect={openHistoryModal}
-          style={menuItemStyle}
-        >
-          {t['com.affine.history.view-history-version']()}
-        </MenuItem>
-      ) : null}
-
       <MenuSeparator />
       <MoveToTrash
         data-testid="editor-option-menu-delete"
