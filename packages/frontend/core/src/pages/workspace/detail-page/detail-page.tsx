@@ -2,7 +2,6 @@ import { Scrollable } from '@affine/component';
 import { PageDetailSkeleton } from '@affine/component/page-detail-skeleton';
 import type { ChatPanel } from '@affine/core/blocksuite/presets/ai';
 import { AIProvider } from '@affine/core/blocksuite/presets/ai';
-import { PageAIOnboarding } from '@affine/core/components/affine/ai-onboarding';
 import { useAppSettingHelper } from '@affine/core/hooks/affine/use-app-setting-helper';
 import { RecentDocsService } from '@affine/core/modules/quicksearch';
 import { ViewService } from '@affine/core/modules/workbench/services/view';
@@ -265,7 +264,6 @@ const DetailPageImpl = memo(function DetailPageImpl() {
       </ViewSidebarTab>
 
       <GlobalPageHistoryModal />
-      <PageAIOnboarding />
     </>
   );
 });
