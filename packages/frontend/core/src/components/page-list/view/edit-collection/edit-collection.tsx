@@ -8,8 +8,8 @@ import type { ReactNode } from 'react';
 import { useCallback, useMemo, useState } from 'react';
 
 import * as styles from './edit-collection.css';
-import { PagesMode } from './pages-mode';
 import { RulesMode } from './rules-mode';
+import { SelectPage } from './select-page';
 
 export type EditCollectionMode = 'page' | 'rule';
 
@@ -23,9 +23,6 @@ export interface EditCollectionModalProps {
 }
 
 const contentOptions: DialogContentProps = {
-  onPointerDownOutside: e => {
-    e.preventDefault();
-  },
   style: {
     padding: 0,
     maxWidth: 944,
@@ -60,6 +57,7 @@ export const EditCollectionModal = ({
       width="calc(100% - 64px)"
       height="80%"
       contentOptions={contentOptions}
+      persistent
     >
       {open && init ? (
         <EditCollection
@@ -110,6 +108,12 @@ export const EditCollection = ({
       allowList: init.allowList,
     });
   }, [init.allowList, init.filterList, value]);
+  const onIdsChange = useCallback(
+    (ids: string[]) => {
+      onChange({ ...value, allowList: ids });
+    },
+    [value]
+  );
   const buttons = useMemo(
     () => (
       <>
@@ -164,13 +168,13 @@ export const EditCollection = ({
       className={styles.collectionEditContainer}
     >
       {mode === 'page' ? (
-        <PagesMode
-          collection={value}
-          updateCollection={onChange}
-          switchMode={switchMode}
-          buttons={buttons}
+        <SelectPage
           allPageListConfig={config}
-        ></PagesMode>
+          init={value.allowList}
+          onChange={onIdsChange}
+          header={switchMode}
+          buttons={buttons}
+        />
       ) : (
         <RulesMode
           allPageListConfig={config}

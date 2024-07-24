@@ -210,7 +210,7 @@ export class ChatPanelMessages extends WithDisposable(ShadowlessElement) {
                   display: 'flex',
                   height: '28px',
                   gap: '8px',
-                  width: '85%',
+                  width: '88%',
                   alignItems: 'center',
                   justifyContent: 'start',
                   cursor: 'pointer',
@@ -545,13 +545,22 @@ export class ChatPanelMessages extends WithDisposable(ShadowlessElement) {
                         return;
                       }
 
-                      await action.handler(
+                      const success = await action.handler(
                         host,
                         content,
                         this._currentTextSelection,
                         this._currentBlockSelections,
                         this._currentImageSelections
                       );
+                      const rootService = host.spec.getService('affine:page');
+                      const { notificationService } = rootService;
+                      if (success) {
+                        notificationService?.notify({
+                          title: action.toast,
+                          accent: 'success',
+                          onClose: function (): void {},
+                        });
+                      }
                     }}
                   >
                     ${action.title}
