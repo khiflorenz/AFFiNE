@@ -1,3 +1,4 @@
+import { CurrentUser } from '@affine/server/core/auth';
 import {
   Injectable,
   Logger,
@@ -278,6 +279,7 @@ export class DocManager implements OnModuleInit, OnModuleDestroy {
     workspaceId: string,
     guid: string,
     updates: Buffer[],
+    user: CurrentUser | undefined,
     retryTimes = 10
   ) {
     const timestamp = await new Promise<number>((resolve, reject) => {
@@ -332,6 +334,18 @@ export class DocManager implements OnModuleInit, OnModuleDestroy {
           },
         });
     });
+
+    await this.db.snapshot.update({
+      data: {
+        lastUpdatedBy: user?.id,
+      },
+      where: {
+        id_workspaceId: {
+          id: guid,
+          workspaceId,
+        }
+      }
+    })
     await this.updateCachedUpdatesCount(workspaceId, guid, updates.length);
 
     return timestamp;
@@ -386,8 +400,8 @@ export class DocManager implements OnModuleInit, OnModuleDestroy {
   /**
    * get the latest doc with all update applied.
    */
-  async get(workspaceId: string, guid: string): Promise<DocResponse | null> {
-    const result = await this._get(workspaceId, guid);
+  async get(workspaceId: string, guid: string, user: CurrentUser): Promise<DocResponse | null> {
+    const result = await this._get(workspaceId, guid, user);
     if (result) {
       if ('doc' in result) {
         return result;
@@ -409,9 +423,10 @@ export class DocManager implements OnModuleInit, OnModuleDestroy {
    */
   async getBinary(
     workspaceId: string,
-    guid: string
+    guid: string,
+    user: CurrentUser | undefined
   ): Promise<BinaryResponse | null> {
-    const result = await this._get(workspaceId, guid);
+    const result = await this._get(workspaceId, guid, user);
     if (result) {
       if ('doc' in result) {
         return {
@@ -501,7 +516,7 @@ export class DocManager implements OnModuleInit, OnModuleDestroy {
 
     await this.lockUpdatesForAutoSquash(workspaceId, id, async () => {
       try {
-        await this._get(workspaceId, id);
+        await this._get(workspaceId, id, undefined);
       } catch (e) {
         this.logger.error(
           `Failed to apply updates for workspace: ${workspaceId}, guid: ${id}`
@@ -537,7 +552,8 @@ export class DocManager implements OnModuleInit, OnModuleDestroy {
     // we always delay the snapshot update to avoid db overload,
     // so the value of auto updated `updatedAt` by db will never be accurate to user's real action time
     updatedAt: Date,
-    seq: number
+    seq: number,
+    user: CurrentUser | undefined,
   ) {
     const blob = Buffer.from(encodeStateAsUpdate(doc));
 
@@ -560,10 +576,10 @@ export class DocManager implements OnModuleInit, OnModuleDestroy {
     //      For updating scenario, the seq number will be updated when updates pushed to db.
     try {
       const result: { updatedAt: Date }[] = await this.db.$queryRaw`
-        INSERT INTO "snapshots" ("workspace_id", "guid", "blob", "state", "seq", "created_at", "updated_at")
-        VALUES (${workspaceId}, ${guid}, ${blob}, ${state}, ${seq}, DEFAULT, ${updatedAt})
+        INSERT INTO "snapshots" ("workspace_id", "guid", "blob", "state", "seq", "created_at", "updated_at", "created_by", "last_updated_by")
+        VALUES (${workspaceId}, ${guid}, ${blob}, ${state}, ${seq}, DEFAULT, ${updatedAt}, ${user?.id}, ${user?.id})
         ON CONFLICT ("workspace_id", "guid")
-        DO UPDATE SET "blob" = ${blob}, "state" = ${state}, "updated_at" = ${updatedAt}, "seq" = ${seq}
+        DO UPDATE SET "blob" = ${blob}, "state" = ${state}, "updated_at" = ${updatedAt}, "seq" = ${seq}, "last_updated_by" = ${user?.id}
         WHERE "snapshots"."workspace_id" = ${workspaceId} AND "snapshots"."guid" = ${guid} AND "snapshots"."updated_at" <= ${updatedAt}
         RETURNING "snapshots"."workspace_id" as "workspaceId", "snapshots"."guid" as "id", "snapshots"."updated_at" as "updatedAt"
       `;
@@ -616,13 +632,14 @@ export class DocManager implements OnModuleInit, OnModuleDestroy {
 
   private async _get(
     workspaceId: string,
-    guid: string
+    guid: string,
+    user: CurrentUser | undefined,
   ): Promise<DocResponse | BinaryResponse | null> {
     const snapshot = await this.getSnapshot(workspaceId, guid);
     const updates = await this.getUpdates(workspaceId, guid);
 
     if (updates.length) {
-      return this.squash(snapshot, updates);
+      return this.squash(snapshot, updates, user);
     }
 
     return snapshot
@@ -637,12 +654,13 @@ export class DocManager implements OnModuleInit, OnModuleDestroy {
   @CallTimer('doc', 'squash')
   private async squash(
     snapshot: Snapshot | null,
-    updates: Update[]
+    updates: Update[],
+    user?: CurrentUser | undefined,
   ): Promise<DocResponse> {
     if (!updates.length) {
       throw new Error('No updates to squash');
     }
-
+    console.log('user squash', user);
     const last = updates[updates.length - 1];
     const { id, workspaceId } = last;
 
@@ -657,7 +675,8 @@ export class DocManager implements OnModuleInit, OnModuleDestroy {
       id,
       doc,
       last.createdAt,
-      last.seq
+      last.seq,
+      user,
     );
 
     if (done) {

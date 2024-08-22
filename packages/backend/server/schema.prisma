@@ -321,9 +321,11 @@ model Snapshot {
   seq         Int      @default(0) @db.Integer
   state       Bytes?   @db.ByteA
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @map("updated_at") @db.Timestamptz(6)
+  createdBy     String   @map("created_by") @db.VarChar(150)
+  lastUpdatedBy String   @map("last_updated_by") @db.VarChar(150)
   // the `updated_at` field will not record the time of record changed,
   // but the created time of last seen update that has been merged into snapshot.
-  updatedAt   DateTime @map("updated_at") @db.Timestamptz(6)
 
   @@id([id, workspaceId])
   @@map("snapshots")

@@ -223,8 +223,10 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     };
   }
 
+  @Auth()
   @SubscribeMessage('client-update-v2')
   async handleClientUpdateV2(
+    @CurrentUser() user: CurrentUser,
     @MessageBody()
     {
       workspaceId,
@@ -244,12 +246,13 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const timestamp = await this.docManager.batchPush(
       docId.workspace,
       docId.guid,
-      buffers
+      buffers,
+      user,
     );
 
     client
       .to(Sync(workspaceId))
-      .emit('server-updates', { workspaceId, guid, updates, timestamp });
+      .emit('server-updates', { workspaceId, guid, updates, timestamp, user: user.name });
 
     return {
       data: {
@@ -259,8 +262,10 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     };
   }
 
+  @Auth()
   @SubscribeMessage('doc-load-v2')
   async loadDocV2(
+    @CurrentUser() user: CurrentUser,
     @ConnectedSocket() client: Socket,
     @MessageBody()
     {
@@ -278,7 +283,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.assertInWorkspace(client, Sync(workspaceId));
 
     const docId = new DocID(guid, workspaceId);
-    const res = await this.docManager.get(docId.workspace, docId.guid);
+    const res = await this.docManager.get(docId.workspace, docId.guid, user);
 
     if (!res) {
       throw new DocNotFound({ workspaceId, docId: docId.guid });
