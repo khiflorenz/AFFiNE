@@ -2,15 +2,16 @@
 CREATE TABLE "snapshot_update_histories" (
     "id" VARCHAR NOT NULL,
     "created_by" VARCHAR,
+    "guid" VARCHAR NOT NULL,
     "last_updated_by" VARCHAR,
-    "snapshot_id" VARCHAR NOT NULL,
+    "workspace_id" VARCHAR NOT NULL,
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "snapshot_update_histories_pk" PRIMARY KEY ("id")
 );
 
 -- AddForeignKey
-ALTER TABLE "snapshot_update_histories" ADD CONSTRAINT "snapshot_fk" FOREIGN KEY ("snapshot_id") REFERENCES "snapshots"("guid") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "snapshot_update_histories" ADD CONSTRAINT "snapshot_fk" FOREIGN KEY ("guid", "workspace_id") REFERENCES "snapshots"("guid", "workspace_id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "snapshot_update_histories" ADD CONSTRAINT "created_by_user_fk" FOREIGN KEY ("created_by") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
