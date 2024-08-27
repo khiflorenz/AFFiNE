@@ -1,8 +1,11 @@
 -- CreateTable
 CREATE TABLE "snapshot_update_histories" (
+    "id" VARCHAR NOT NULL,
     "created_by" VARCHAR,
     "last_updated_by" VARCHAR,
-    "snapshot_id" VARCHAR NOT NULL
+    "snapshot_id" VARCHAR NOT NULL,
+
+    CONSTRAINT "snapshot_update_histories_pk" PRIMARY KEY ("id")
 );
 
 -- AddForeignKey
