@@ -20,4 +20,4 @@ ALTER TABLE "snapshot_update_histories" ADD CONSTRAINT "created_by_user_fk" FORE
 ALTER TABLE "snapshot_update_histories" ADD CONSTRAINT "last_updated_by_user_fk" FOREIGN KEY ("last_updated_by") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- CreateIndex
-CREATE UNIQUE INDEX "snapshot_update_histories_snapshot_id_uk" ON "snapshot_update_histories"("snapshot_id");
+CREATE UNIQUE INDEX "snapshot_update_histories_snapshot_id_uk" ON "snapshot_update_histories"("guid", "workspace_id");
