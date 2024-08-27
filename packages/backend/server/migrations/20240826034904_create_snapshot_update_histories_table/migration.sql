@@ -4,6 +4,7 @@ CREATE TABLE "snapshot_update_histories" (
     "created_by" VARCHAR,
     "last_updated_by" VARCHAR,
     "snapshot_id" VARCHAR NOT NULL,
+    "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "snapshot_update_histories_pk" PRIMARY KEY ("id")
 );
