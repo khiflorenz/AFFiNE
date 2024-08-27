@@ -1,3 +1,4 @@
+import { CurrentUser } from '@affine/server/core/auth';
 import {
   Injectable,
   Logger,
@@ -278,8 +279,23 @@ export class DocManager implements OnModuleInit, OnModuleDestroy {
     workspaceId: string,
     guid: string,
     updates: Buffer[],
+    user: CurrentUser,
     retryTimes = 10
   ) {
+    await this.db.snapshotUpdateHistories.upsert({
+      where: {
+        snapshotId: guid,
+      },
+      update: {
+        lastUpdatedBy: user.id,
+      },
+      create: {
+        snapshotId: guid,
+        createdBy: user.id,
+        lastUpdatedBy: user.id,
+      },
+    });
+
     const timestamp = await new Promise<number>((resolve, reject) => {
       defer(async () => {
         const lastSeq = await this.getUpdateSeq(
@@ -386,8 +402,8 @@ export class DocManager implements OnModuleInit, OnModuleDestroy {
   /**
    * get the latest doc with all update applied.
    */
-  async get(workspaceId: string, guid: string): Promise<DocResponse | null> {
-    const result = await this._get(workspaceId, guid);
+  async get(workspaceId: string, guid: string, user?: CurrentUser): Promise<DocResponse | null> {
+    const result = await this._get(workspaceId, guid, user);
     if (result) {
       if ('doc' in result) {
         return result;
@@ -616,13 +632,14 @@ export class DocManager implements OnModuleInit, OnModuleDestroy {
 
   private async _get(
     workspaceId: string,
-    guid: string
+    guid: string,
+    user?: CurrentUser,
   ): Promise<DocResponse | BinaryResponse | null> {
     const snapshot = await this.getSnapshot(workspaceId, guid);
     const updates = await this.getUpdates(workspaceId, guid);
 
     if (updates.length) {
-      return this.squash(snapshot, updates);
+      return this.squash(snapshot, updates, user);
     }
 
     return snapshot
@@ -637,10 +654,27 @@ export class DocManager implements OnModuleInit, OnModuleDestroy {
   @CallTimer('doc', 'squash')
   private async squash(
     snapshot: Snapshot | null,
-    updates: Update[]
+    updates: Update[],
+    user?: CurrentUser,
   ): Promise<DocResponse> {
     if (!updates.length) {
       throw new Error('No updates to squash');
+    }
+
+    if(snapshot && user) {
+      await this.db.snapshotUpdateHistories.upsert({
+        where: {
+          snapshotId: snapshot.id,
+        },
+        update: {
+          lastUpdatedBy: user.id,
+        },
+        create: {
+          snapshotId: snapshot.id,
+          createdBy: user.id,
+          lastUpdatedBy: user.id,
+        },
+      });
     }
 
     const last = updates[updates.length - 1];

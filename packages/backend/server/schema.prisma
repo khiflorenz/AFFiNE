@@ -316,7 +316,7 @@ model OptimizedBlob {
 // Snapshot + Updates are the latest state of the doc
 model Snapshot {
   workspaceId String   @map("workspace_id") @db.VarChar
-  id          String   @default(uuid()) @map("guid") @db.VarChar
+  id          String   @default(uuid()) @map("guid") @db.VarChar @unique
   blob        Bytes    @db.ByteA
   seq         Int      @default(0) @db.Integer
   state       Bytes?   @db.ByteA
@@ -324,6 +324,7 @@ model Snapshot {
   // the `updated_at` field will not record the time of record changed,
   // but the created time of last seen update that has been merged into snapshot.
   updatedAt   DateTime @map("updated_at") @db.Timestamptz(6)
+  snapshotUpdateHistories SnapshotUpdateHistories[]
 
   @@id([id, workspaceId])
   @@map("snapshots")
@@ -533,4 +534,15 @@ model RuntimeConfig {
 
   @@unique([module, key])
   @@map("app_runtime_settings")
+}
+
+model SnapshotUpdateHistories {
+  snapshotId     String   @map("snapshot_id")     @db.VarChar
+  createdBy      String?  @map("created_by")      @db.VarChar
+  lastUpdatedBy  String?  @map("last_updated_by") @db.VarChar
+
+  snapshot Snapshot @relation(fields: [snapshotId], references: [id])
+
+  @@unique([snapshotId])
+  @@map("snapshot_update_histories")
 }
