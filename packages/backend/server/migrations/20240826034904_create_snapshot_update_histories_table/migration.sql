@@ -2,7 +2,7 @@
 CREATE TABLE "snapshot_update_histories" (
     "created_by" VARCHAR,
     "last_updated_by" VARCHAR,
-    "snapshot_id" VARCHAR NOT NULL,
+    "snapshot_id" VARCHAR NOT NULL
 );
 
 -- AddForeignKey
