@@ -284,13 +284,17 @@ export class DocManager implements OnModuleInit, OnModuleDestroy {
   ) {
     await this.db.snapshotUpdateHistories.upsert({
       where: {
-        snapshotId: guid,
+        guid_workspaceId: {
+          guid,
+          workspaceId,
+        },
       },
       update: {
         lastUpdatedBy: user.id,
       },
       create: {
-        snapshotId: guid,
+        guid,
+        workspaceId,
         createdBy: user.id,
         lastUpdatedBy: user.id,
       },
@@ -664,15 +668,19 @@ export class DocManager implements OnModuleInit, OnModuleDestroy {
     if(snapshot && user) {
       await this.db.snapshotUpdateHistories.upsert({
         where: {
-          snapshotId: snapshot.id,
+          guid_workspaceId: {
+            guid: snapshot.id,
+            workspaceId: snapshot.workspaceId
+          },
         },
         update: {
           lastUpdatedBy: user.id,
         },
         create: {
-          snapshotId: snapshot.id,
+          guid: snapshot.id,
           createdBy: user.id,
           lastUpdatedBy: user.id,
+          workspaceId: snapshot.workspaceId,
         },
       });
     }

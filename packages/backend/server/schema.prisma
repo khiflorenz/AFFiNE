@@ -324,7 +324,6 @@ model Snapshot {
   // the `updated_at` field will not record the time of record changed,
   // but the created time of last seen update that has been merged into snapshot.
   updatedAt   DateTime @map("updated_at") @db.Timestamptz(6)
-  snapshotUpdateHistories SnapshotUpdateHistories[]
 
   @@id([id, workspaceId])
   @@map("snapshots")
@@ -537,8 +536,9 @@ model RuntimeConfig {
 }
 
 model SnapshotUpdateHistories {
+  id             String                           @id @default(uuid()) @db.VarChar
   workspaceId    String   @map("workspace_id")    @db.VarChar
-  guid           String   @map("guid")            @db.VarChar
+  guid           String                           @db.VarChar
   createdBy      String?  @map("created_by")      @db.VarChar
   lastUpdatedBy  String?  @map("last_updated_by") @db.VarChar
 
