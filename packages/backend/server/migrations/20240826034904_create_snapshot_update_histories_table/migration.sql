@@ -11,9 +11,6 @@ CREATE TABLE "snapshot_update_histories" (
 );
 
 -- AddForeignKey
-ALTER TABLE "snapshot_update_histories" ADD CONSTRAINT "snapshot_fk" FOREIGN KEY ("guid", "workspace_id") REFERENCES "snapshots"("guid", "workspace_id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "snapshot_update_histories" ADD CONSTRAINT "created_by_user_fk" FOREIGN KEY ("created_by") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
