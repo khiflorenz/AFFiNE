@@ -1,4 +1,3 @@
-import { CurrentUser } from '@affine/server/core/auth';
 import {
   Injectable,
   Logger,
@@ -27,6 +26,7 @@ import {
   metrics,
   OnEvent,
 } from '../../fundamentals';
+import { CurrentUser } from '../auth/current-user';
 
 function compare(yBinary: Buffer, jwstBinary: Buffer, strict = false): boolean {
   if (yBinary.equals(jwstBinary)) {
