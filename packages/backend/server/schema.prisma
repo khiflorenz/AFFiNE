@@ -537,12 +537,11 @@ model RuntimeConfig {
 }
 
 model SnapshotUpdateHistories {
-  snapshotId     String   @map("snapshot_id")     @db.VarChar
+  workspaceId    String   @map("workspace_id")    @db.VarChar
+  guid           String   @map("guid")            @db.VarChar
   createdBy      String?  @map("created_by")      @db.VarChar
   lastUpdatedBy  String?  @map("last_updated_by") @db.VarChar
 
-  snapshot Snapshot @relation(fields: [snapshotId], references: [id, workspaceId])
-
-  @@unique([snapshotId])
+  @@unique([guid, workspaceId])
   @@map("snapshot_update_histories")
 }
