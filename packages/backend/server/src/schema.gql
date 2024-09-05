@@ -32,6 +32,7 @@ type DeleteAccount {
 }
 
 type DocHistoryType {
+  createdByUser: UserType
   id: String!
   timestamp: DateTime!
   workspaceId: String!

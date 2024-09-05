@@ -256,8 +256,10 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     };
   }
 
+  @Auth()
   @SubscribeMessage('client-update-v2')
   async handleClientUpdateV2(
+    @CurrentUser() user: CurrentUser,
     @MessageBody()
     {
       workspaceId,
@@ -277,7 +279,8 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const timestamp = await this.docManager.batchPush(
       docId.workspace,
       docId.guid,
-      buffers
+      buffers,
+      user,
     );
 
     client

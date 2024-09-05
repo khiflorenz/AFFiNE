@@ -91,6 +91,7 @@ export class DocHistoryManager {
             blob: previous.blob,
             state: previous.state,
             expiredAt: await this.getExpiredDateFromNow(workspaceId),
+            createdBy: previous.createdBy,
           },
         })
         .catch(() => {
@@ -115,6 +116,8 @@ export class DocHistoryManager {
     return this.db.snapshotHistory.findMany({
       select: {
         timestamp: true,
+        createdBy: true,
+        createdByUser: true,
       },
       where: {
         workspaceId,

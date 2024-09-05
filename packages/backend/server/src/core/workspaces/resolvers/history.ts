@@ -9,13 +9,14 @@ import {
   ResolveField,
   Resolver,
 } from '@nestjs/graphql';
-import type { SnapshotHistory } from '@prisma/client';
+import type { SnapshotHistory, User } from '@prisma/client';
 
 import { CurrentUser } from '../../auth';
 import { DocHistoryManager } from '../../doc';
 import { DocID } from '../../utils/doc';
 import { PermissionService } from '../permission';
 import { Permission, WorkspaceType } from '../types';
+import { UserType } from '../../user';
 
 @ObjectType()
 class DocHistoryType implements Partial<SnapshotHistory> {
@@ -27,6 +28,11 @@ class DocHistoryType implements Partial<SnapshotHistory> {
 
   @Field(() => GraphQLISODateTime)
   timestamp!: Date;
+
+  @Field(() => UserType, {
+    nullable: true,
+  })
+  createdByUser?: User;
 }
 
 @Resolver(() => WorkspaceType)
@@ -54,11 +60,12 @@ export class DocHistoryResolver {
     return this.historyManager
       .list(workspace.id, docId.guid, timestamp, take)
       .then(rows =>
-        rows.map(({ timestamp }) => {
+        rows.map(({ timestamp, createdByUser }) => {
           return {
             workspaceId: workspace.id,
             id: docId.guid,
             timestamp,
+            createdByUser: createdByUser || undefined,
           };
         })
       );
