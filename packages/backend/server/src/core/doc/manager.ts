@@ -26,6 +26,7 @@ import {
   metrics,
   OnEvent,
 } from '../../fundamentals';
+import { CurrentUser } from '../auth';
 
 function compare(yBinary: Buffer, jwstBinary: Buffer, strict = false): boolean {
   if (yBinary.equals(jwstBinary)) {
@@ -278,6 +279,7 @@ export class DocManager implements OnModuleInit, OnModuleDestroy {
     workspaceId: string,
     guid: string,
     updates: Buffer[],
+    user: CurrentUser,
     retryTimes = 10
   ) {
     const timestamp = await new Promise<number>((resolve, reject) => {
@@ -285,7 +287,8 @@ export class DocManager implements OnModuleInit, OnModuleDestroy {
         const lastSeq = await this.getUpdateSeq(
           workspaceId,
           guid,
-          updates.length
+          user,
+          updates.length,
         );
         const now = Date.now();
         let timestamp = now;
@@ -310,6 +313,7 @@ export class DocManager implements OnModuleInit, OnModuleDestroy {
                 blob: update,
                 seq,
                 createdAt: new Date(createdAt), // make sure the updates can be ordered by create time
+                createdBy: user.id,
               };
             }),
           });
@@ -537,7 +541,8 @@ export class DocManager implements OnModuleInit, OnModuleDestroy {
     // we always delay the snapshot update to avoid db overload,
     // so the value of auto updated `updatedAt` by db will never be accurate to user's real action time
     updatedAt: Date,
-    seq: number
+    seq: number,
+    createdBy?: string | null,
   ) {
     const blob = Buffer.from(encodeStateAsUpdate(doc));
 
@@ -560,10 +565,10 @@ export class DocManager implements OnModuleInit, OnModuleDestroy {
     //      For updating scenario, the seq number will be updated when updates pushed to db.
     try {
       const result: { updatedAt: Date }[] = await this.db.$queryRaw`
-        INSERT INTO "snapshots" ("workspace_id", "guid", "blob", "state", "seq", "created_at", "updated_at")
-        VALUES (${workspaceId}, ${guid}, ${blob}, ${state}, ${seq}, DEFAULT, ${updatedAt})
+        INSERT INTO "snapshots" ("workspace_id", "guid", "blob", "state", "seq", "created_at", "updated_at", "created_by", "updated_by")
+        VALUES (${workspaceId}, ${guid}, ${blob}, ${state}, ${seq}, DEFAULT, ${updatedAt}, ${createdBy}, ${createdBy})
         ON CONFLICT ("workspace_id", "guid")
-        DO UPDATE SET "blob" = ${blob}, "state" = ${state}, "updated_at" = ${updatedAt}, "seq" = ${seq}
+        DO UPDATE SET "blob" = ${blob}, "state" = ${state}, "updated_at" = ${updatedAt}, "seq" = ${seq}, "updated_by" = ${createdBy}
         WHERE "snapshots"."workspace_id" = ${workspaceId} AND "snapshots"."guid" = ${guid} AND "snapshots"."updated_at" <= ${updatedAt}
         RETURNING "snapshots"."workspace_id" as "workspaceId", "snapshots"."guid" as "id", "snapshots"."updated_at" as "updatedAt"
       `;
@@ -657,7 +662,8 @@ export class DocManager implements OnModuleInit, OnModuleDestroy {
       id,
       doc,
       last.createdAt,
-      last.seq
+      last.seq,
+      last.createdBy,
     );
 
     if (done) {
@@ -669,6 +675,7 @@ export class DocManager implements OnModuleInit, OnModuleDestroy {
             blob: snapshot.blob,
             state: snapshot.state,
             updatedAt: snapshot.updatedAt,
+            createdBy: snapshot.updatedBy,
           },
         });
       }
@@ -700,7 +707,12 @@ export class DocManager implements OnModuleInit, OnModuleDestroy {
     return { doc, timestamp: last.createdAt.getTime() };
   }
 
-  private async getUpdateSeq(workspaceId: string, guid: string, batch = 1) {
+  private async getUpdateSeq(
+    workspaceId: string,
+    guid: string,
+    user?: CurrentUser,
+    batch = 1
+  ) {
     try {
       const { seq } = await this.db.snapshot.update({
         select: {
@@ -716,6 +728,7 @@ export class DocManager implements OnModuleInit, OnModuleDestroy {
           seq: {
             increment: batch,
           },
+          updatedBy: user?.id,
         },
       });
 

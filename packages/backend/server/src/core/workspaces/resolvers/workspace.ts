@@ -249,6 +249,8 @@ export class WorkspaceResolver {
             workspaceId: workspace.id,
             blob: buffer,
             updatedAt: new Date(),
+            createdBy: user.id,
+            updatedBy: user.id,
           },
         });
       }
