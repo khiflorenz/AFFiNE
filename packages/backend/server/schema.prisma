@@ -32,6 +32,9 @@ model User {
   sessions              UserSession[]
   aiSessions            AiSession[]
   updatedRuntimeConfigs RuntimeConfig[]
+  snapshotCreated       Snapshot[]   @relation(name: "SnapshotCreated")
+  snapshotUpdated       Snapshot[]   @relation(name: "SnapshotUpdated")
+  snapshotHistory       SnapshotHistory[]
 
   @@index([email])
   @@map("users")
@@ -325,6 +328,12 @@ model Snapshot {
   // but the created time of last seen update that has been merged into snapshot.
   updatedAt   DateTime @map("updated_at") @db.Timestamptz(6)
 
+  createdByUser User?    @relation(name: "SnapshotCreated", fields: [createdBy], references: [id], onDelete: Cascade)
+  createdBy     String?  @map("created_by")
+
+  updatedByUser User?    @relation(name: "SnapshotUpdated", fields: [updatedBy], references: [id], onDelete: Cascade)
+  updatedBy     String?  @map("updated_by")
+
   @@id([id, workspaceId])
   @@map("snapshots")
 }
@@ -335,18 +344,22 @@ model Update {
   seq         Int      @db.Integer
   blob        Bytes    @db.ByteA
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy   String?  @map("created_by")
 
   @@id([workspaceId, id, seq])
   @@map("updates")
 }
 
 model SnapshotHistory {
-  workspaceId String   @map("workspace_id") @db.VarChar(36)
-  id          String   @map("guid") @db.VarChar(36)
-  timestamp   DateTime @db.Timestamptz(6)
-  blob        Bytes    @db.ByteA
-  state       Bytes?   @db.ByteA
-  expiredAt   DateTime @map("expired_at") @db.Timestamptz(6)
+  workspaceId   String   @map("workspace_id") @db.VarChar(36)
+  id            String   @map("guid") @db.VarChar(36)
+  timestamp     DateTime @db.Timestamptz(6)
+  blob          Bytes    @db.ByteA
+  state         Bytes?   @db.ByteA
+  expiredAt     DateTime @map("expired_at") @db.Timestamptz(6)
+
+  createdByUser User?    @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  createdBy     String?  @map("created_by")
 
   @@id([workspaceId, id, timestamp])
   @@map("snapshot_histories")
