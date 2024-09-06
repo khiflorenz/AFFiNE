@@ -8,6 +8,12 @@ query listHistory(
     histories(guid: $pageDocId, take: $take, before: $before) {
       id
       timestamp
+      createdByUser {
+        id
+        name
+        email
+        avatarUrl
+      }
     }
   }
 }

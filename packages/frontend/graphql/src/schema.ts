@@ -1731,6 +1731,7 @@ export type ListHistoryQuery = {
       __typename?: 'DocHistoryType';
       id: string;
       timestamp: string;
+      createdByUser: UserType | undefined;
     }>;
   };
 };

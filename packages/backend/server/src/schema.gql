@@ -7,11 +7,6 @@ type BlobNotFoundDataType {
   workspaceId: String!
 }
 
-enum ChatHistoryOrder {
-  asc
-  desc
-}
-
 type ChatMessage {
   attachments: [String!]
   content: String!
@@ -21,45 +16,8 @@ type ChatMessage {
   role: String!
 }
 
-type Copilot {
-  """Get the session list of actions in the workspace"""
-  actions: [String!]!
-
-  """Get the session list of chats in the workspace"""
-  chats: [String!]!
-  histories(docId: String, options: QueryChatHistoriesInput): [CopilotHistories!]!
-
-  """Get the quota of the user in the workspace"""
-  quota: CopilotQuota!
-  workspaceId: ID
-}
-
-type CopilotHistories {
-  """An mark identifying which view to use to display the session"""
-  action: String
-  createdAt: DateTime!
-  messages: [ChatMessage!]!
-  sessionId: String!
-
-  """The number of tokens used in the session"""
-  tokens: Int!
-}
-
 type CopilotMessageNotFoundDataType {
   messageId: String!
-}
-
-enum CopilotModels {
-  DallE3
-  Gpt4Omni
-  Gpt4TurboPreview
-  Gpt4VisionPreview
-  Gpt35Turbo
-  TextEmbedding3Large
-  TextEmbedding3Small
-  TextEmbeddingAda002
-  TextModerationLatest
-  TextModerationStable
 }
 
 input CopilotPromptConfigInput {
@@ -100,39 +58,10 @@ type CopilotPromptNotFoundDataType {
   name: String!
 }
 
-type CopilotPromptType {
-  action: String
-  config: CopilotPromptConfigType
-  messages: [CopilotPromptMessageType!]!
-  model: CopilotModels!
-  name: String!
-}
-
 type CopilotProviderSideErrorDataType {
   kind: String!
   message: String!
   provider: String!
-}
-
-type CopilotQuota {
-  limit: SafeInt
-  used: SafeInt!
-}
-
-input CreateChatMessageInput {
-  attachments: [String!]
-  blobs: [Upload!]
-  content: String
-  params: JSON
-  sessionId: String!
-}
-
-input CreateChatSessionInput {
-  docId: String!
-
-  """The prompt name to use for the session"""
-  promptName: String!
-  workspaceId: String!
 }
 
 input CreateCheckoutSessionInput {
@@ -141,14 +70,6 @@ input CreateCheckoutSessionInput {
   plan: SubscriptionPlan = Pro
   recurring: SubscriptionRecurring = Yearly
   successCallbackLink: String!
-}
-
-input CreateCopilotPromptInput {
-  action: String
-  config: CopilotPromptConfigInput
-  messages: [CopilotPromptMessageInput!]!
-  model: CopilotModels!
-  name: String!
 }
 
 input CreateUserInput {
@@ -170,12 +91,6 @@ type DeleteAccount {
   success: Boolean!
 }
 
-input DeleteSessionInput {
-  docId: String!
-  sessionIds: [String!]!
-  workspaceId: String!
-}
-
 type DocAccessDeniedDataType {
   docId: String!
   workspaceId: String!
@@ -188,6 +103,7 @@ type DocHistoryNotFoundDataType {
 }
 
 type DocHistoryType {
+  createdByUser: UserType
   id: String!
   timestamp: DateTime!
   workspaceId: String!
@@ -279,17 +195,6 @@ enum FeatureType {
   EarlyAccess
   UnlimitedCopilot
   UnlimitedWorkspace
-}
-
-input ForkChatSessionInput {
-  docId: String!
-
-  """
-  Identify a message in the array and keep it with all previous messages into a forked session.
-  """
-  latestMessageId: String!
-  sessionId: String!
-  workspaceId: String!
 }
 
 type HumanReadableQuotaType {
@@ -410,20 +315,8 @@ type Mutation {
   changeEmail(email: String!, token: String!): UserType!
   changePassword(newPassword: String!, token: String!): UserType!
 
-  """Cleanup sessions"""
-  cleanupCopilotSession(options: DeleteSessionInput!): [String!]!
-
   """Create a subscription checkout link of stripe"""
   createCheckoutSession(input: CreateCheckoutSessionInput!): String!
-
-  """Create a chat message"""
-  createCopilotMessage(options: CreateChatMessageInput!): String!
-
-  """Create a copilot prompt"""
-  createCopilotPrompt(input: CreateCopilotPromptInput!): CopilotPromptType!
-
-  """Create a chat session"""
-  createCopilotSession(options: CreateChatSessionInput!): String!
 
   """Create a stripe customer portal to manage payment methods"""
   createCustomerPortal: String!
@@ -439,9 +332,6 @@ type Mutation {
   """Delete a user account"""
   deleteUser(id: String!): DeleteAccount!
   deleteWorkspace(id: String!): Boolean!
-
-  """Create a chat session"""
-  forkCopilotSession(options: ForkChatSessionInput!): String!
   invite(email: String!, permission: Permission!, sendInviteMail: Boolean, workspaceId: String!): String!
   leaveWorkspace(sendLeaveMail: Boolean, workspaceId: String!, workspaceName: String!): Boolean!
   publishPage(mode: PublicPageMode = Page, pageId: String!, workspaceId: String!): WorkspacePage!
@@ -463,9 +353,6 @@ type Mutation {
   setBlob(blob: Upload!, workspaceId: String!): String!
   setWorkspaceExperimentalFeature(enable: Boolean!, feature: FeatureType!, workspaceId: String!): Boolean!
   sharePage(pageId: String!, workspaceId: String!): Boolean! @deprecated(reason: "renamed to publishPage")
-
-  """Update a copilot prompt"""
-  updateCopilotPrompt(messages: [CopilotPromptMessageInput!]!, name: String!): CopilotPromptType!
   updateProfile(input: UpdateUserInput!): UserType!
 
   """update server runtime configurable setting"""
@@ -529,9 +416,6 @@ type Query {
 
   """List blobs of workspace"""
   listBlobs(workspaceId: String!): [String!]! @deprecated(reason: "use `workspace.blobs` instead")
-
-  """List all copilot prompts"""
-  listCopilotPrompts: [CopilotPromptType!]!
   listWorkspaceFeatures(feature: FeatureType!): [WorkspaceType!]!
   prices: [SubscriptionPrice!]!
 
@@ -555,16 +439,6 @@ type Query {
 
   """Get all accessible workspaces for current user"""
   workspaces: [WorkspaceType!]!
-}
-
-input QueryChatHistoriesInput {
-  action: Boolean
-  fork: Boolean
-  limit: Int
-  messageOrder: ChatHistoryOrder
-  sessionId: String
-  sessionOrder: ChatHistoryOrder
-  skip: Int
 }
 
 type QuotaQueryType {
@@ -782,7 +656,6 @@ type UserSubscription {
 type UserType {
   """User avatar url"""
   avatarUrl: String
-  copilot(workspaceId: String): Copilot!
 
   """User email verified"""
   createdAt: DateTime @deprecated(reason: "useless")

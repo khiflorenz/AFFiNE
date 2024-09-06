@@ -199,7 +199,7 @@ export const historyItem = style([
     display: 'flex',
     alignItems: 'center',
     padding: '0 32px',
-    height: 30,
+    height: 40,
     cursor: 'pointer',
     selectors: {
       '&:hover, &[data-active=true]': {
@@ -324,4 +324,44 @@ export const planPromptUpdateButton = style({
   textDecoration: 'underline',
   cursor: 'pointer',
   marginLeft: 4,
+});
+export const historyItemButton = style({
+  width: '100%',
+  height: 35,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 5,
+});
+export const historyItemAvatar = style({
+  width: 30,
+  height: 30,
+  flexShrink: 0,
+  padding: '4px 0',
+});
+export const historyItemInfos = style({
+  width: '100%',
+  height: 'auto',
+  padding: '4px 0',
+  display: 'flex',
+  justifyContent: 'center',
+  flexDirection: 'column',
+  alignItems: 'flex-start',
+});
+export const historyItemInfoTitle = style({
+  fontSize: cssVar('fontSm'),
+  fontWeight: 500,
+  lineHeight: '18px',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  userSelect: 'none',
+  whiteSpace: 'nowrap',
+});
+export const historyItemInfoSubTitle = style({
+  fontSize: cssVar('fontXs'),
+  fontWeight: 400,
+  gap: 2,
+  lineHeight: '18px',
+  color: cssVar('black50'),
+  display: 'flex',
+  alignItems: 'center',
 });
