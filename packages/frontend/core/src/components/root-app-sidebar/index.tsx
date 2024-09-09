@@ -24,7 +24,6 @@ import { useAppSettingHelper } from '../../hooks/affine/use-app-setting-helper';
 import { WorkbenchService } from '../../modules/workbench';
 import {
   AddPageButton,
-  AppDownloadButton,
   AppSidebar,
   CategoryDivider,
   MenuItem,
@@ -44,7 +43,6 @@ import {
 } from './index.css';
 import { AppSidebarJournalButton } from './journal-button';
 import { TrashButton } from './trash-button';
-import { UpdaterButton } from './updater-button';
 import { UserInfo } from './user-info';
 
 export type RootAppSidebarProps = {
@@ -160,9 +158,6 @@ export const RootAppSidebar = (): ReactElement => {
           <ImportPage docCollection={docCollection} />
         </div>
       </SidebarScrollableContainer>
-      <SidebarContainer>
-        {environment.isDesktop ? <UpdaterButton /> : <AppDownloadButton />}
-      </SidebarContainer>
     </AppSidebar>
   );
 };

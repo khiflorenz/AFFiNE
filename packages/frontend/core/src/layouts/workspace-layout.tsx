@@ -31,7 +31,6 @@ import {
 import { Map as YMap } from 'yjs';
 
 import { AIProvider } from '../blocksuite/presets/ai';
-import { WorkspaceAIOnboarding } from '../components/affine/ai-onboarding';
 import { AppContainer } from '../components/affine/app-container';
 import { SyncAwareness } from '../components/affine/awareness';
 import {
@@ -67,7 +66,6 @@ export const WorkspaceLayout = function WorkspaceLayout({
       <CurrentWorkspaceModals />
       <WorkspaceLayoutInner>{children}</WorkspaceLayoutInner>
       {/* should show after workspace loaded */}
-      <WorkspaceAIOnboarding />
       <AIIsland />
     </SWRConfigProvider>
   );

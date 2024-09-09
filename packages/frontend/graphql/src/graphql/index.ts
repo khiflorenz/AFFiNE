@@ -695,6 +695,12 @@ query listHistory($workspaceId: String!, $pageDocId: String!, $take: Int, $befor
     histories(guid: $pageDocId, take: $take, before: $before) {
       id
       timestamp
+      createdByUser {
+        id
+        name
+        email
+        avatarUrl
+      }
     }
   }
 }`,
