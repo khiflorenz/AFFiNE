@@ -304,7 +304,6 @@ const PageHistoryList = ({
       </div>
       <Scrollable.Root className={styles.historyListScrollable}>
         <Scrollable.Viewport className={styles.historyListScrollableInner}>
-          <PlanPrompt />
           {historyListByDay.map(([day, list], i) => {
             const collapsed = collapsedMap[i];
             return (
