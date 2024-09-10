@@ -20,17 +20,6 @@ type CopilotMessageNotFoundDataType {
   messageId: String!
 }
 
-enum CopilotModels {
-  DallE3
-  Gpt4Omni
-  Gpt4OmniMini
-  TextEmbedding3Large
-  TextEmbedding3Small
-  TextEmbeddingAda002
-  TextModerationLatest
-  TextModerationStable
-}
-
 input CopilotPromptConfigInput {
   frequencyPenalty: Float
   jsonMode: Boolean
@@ -66,14 +55,6 @@ type CopilotPromptMessageType {
 }
 
 type CopilotPromptNotFoundDataType {
-  name: String!
-}
-
-type CopilotPromptType {
-  action: String
-  config: CopilotPromptConfigType
-  messages: [CopilotPromptMessageType!]!
-  model: String!
   name: String!
 }
 
@@ -337,9 +318,6 @@ type Mutation {
   cancelSubscription(idempotencyKey: String!, plan: SubscriptionPlan = Pro): UserSubscription!
   changeEmail(email: String!, token: String!): UserType!
   changePassword(newPassword: String!, token: String!, userId: String): Boolean!
-
-  """Cleanup sessions"""
-  cleanupCopilotSession(options: DeleteSessionInput!): [String!]!
 
   """Create change password url"""
   createChangePasswordUrl(callbackUrl: String!, userId: String!): String!
