@@ -1,7 +1,6 @@
 import { isDeepStrictEqual } from 'node:util';
 
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaClient } from '@prisma/client';
 
 import type { EventPayload } from '../../fundamentals';
@@ -256,7 +255,7 @@ export class DocHistoryManager {
     return quota.feature.historyPeriodFromNow;
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT /* everyday at 12am */)
+  //@Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT /* everyday at 12am */)
   async cleanupExpiredHistory() {
     await this.db.snapshotHistory.deleteMany({
       where: {
