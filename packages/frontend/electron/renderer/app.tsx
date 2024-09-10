@@ -6,7 +6,10 @@ import { AffineContext } from '@affine/component/context';
 import { GlobalLoading } from '@affine/component/global-loading';
 import { AppFallback } from '@affine/core/components/affine/app-container';
 import { configureCommonModules } from '@affine/core/modules';
+import { configureAppTabsHeaderModule } from '@affine/core/modules/app-tabs-header';
 import { configureElectronStateStorageImpls } from '@affine/core/modules/storage';
+import { CustomThemeModifier } from '@affine/core/modules/theme-editor';
+import { configureDesktopWorkbenchModule } from '@affine/core/modules/workbench';
 import {
   configureBrowserWorkspaceFlavours,
   configureSqliteWorkspaceEngineStorageProvider,
@@ -85,6 +88,8 @@ configureCommonModules(framework);
 configureElectronStateStorageImpls(framework);
 configureBrowserWorkspaceFlavours(framework);
 configureSqliteWorkspaceEngineStorageProvider(framework);
+configureDesktopWorkbenchModule(framework);
+configureAppTabsHeaderModule(framework);
 const frameworkProvider = framework.provider();
 
 // setup application lifecycle events, and emit application start event
@@ -106,6 +111,7 @@ export function App() {
         <CacheProvider value={cache}>
           <AffineContext store={getCurrentStore()}>
             <Telemetry />
+            <CustomThemeModifier />
             <DebugProvider>
               <GlobalLoading />
               <NotificationCenter />

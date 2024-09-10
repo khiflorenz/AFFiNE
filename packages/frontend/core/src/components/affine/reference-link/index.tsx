@@ -64,7 +64,7 @@ export function pageReferenceRenderer({
     <>
       {icon}
       <span className="affine-reference-title">
-        {title ? title : 'Untitled'}
+        {title ? title : t['Untitled']()}
       </span>
     </>
   );
@@ -106,7 +106,6 @@ export function AffinePageReference({
         e.preventDefault();
         e.stopPropagation();
         peekView.open(ref.current).catch(console.error);
-        return false; // means this click is handled
       }
       if (isInPeekView) {
         peekView.close();

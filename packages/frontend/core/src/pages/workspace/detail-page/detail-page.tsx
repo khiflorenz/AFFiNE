@@ -1,8 +1,10 @@
-import { Scrollable } from '@affine/component';
+import { Scrollable, useHasScrollTop } from '@affine/component';
 import { PageDetailSkeleton } from '@affine/component/page-detail-skeleton';
 import type { ChatPanel } from '@affine/core/blocksuite/presets/ai';
 import { AIProvider } from '@affine/core/blocksuite/presets/ai';
+import { EditorOutlineViewer } from '@affine/core/components/blocksuite/outline-viewer';
 import { useAppSettingHelper } from '@affine/core/hooks/affine/use-app-setting-helper';
+import { useDocMetaHelper } from '@affine/core/hooks/use-block-suite-page-meta';
 import { RecentDocsService } from '@affine/core/modules/quicksearch';
 import { ViewService } from '@affine/core/modules/workbench/services/view';
 import type { PageRootService } from '@blocksuite/blocks';
@@ -65,7 +67,7 @@ import { DetailPageHeader } from './detail-page-header';
 import { EditorChatPanel } from './tabs/chat';
 import { EditorFramePanel } from './tabs/frame';
 import { EditorJournalPanel } from './tabs/journal';
-import { EditorOutline } from './tabs/outline';
+import { EditorOutlinePanel } from './tabs/outline';
 
 const DetailPageImpl = memo(function DetailPageImpl() {
   const workbench = useService(WorkbenchService).workbench;
@@ -73,14 +75,17 @@ const DetailPageImpl = memo(function DetailPageImpl() {
   const activeSidebarTab = useLiveData(view.activeSidebarTab$);
 
   const doc = useService(DocService).doc;
+  const isInTrash = useLiveData(doc.meta$.map(meta => meta.trash));
   const { openPage, jumpToPageBlock, jumpToTag } = useNavigateHelper();
   const [editor, setEditor] = useState<AffineEditorContainer | null>(null);
   const workspace = useService(WorkspaceService).workspace;
   const globalContext = useService(GlobalContextService).globalContext;
   const docCollection = workspace.docCollection;
   const mode = useLiveData(doc.mode$);
+  const isSideBarOpen = useLiveData(workbench.sidebarOpen$);
   const { appSettings } = useAppSettingHelper();
   const chatPanelRef = useRef<ChatPanel | null>(null);
+  const { setDocReadonly } = useDocMetaHelper(workspace.docCollection);
 
   const isActiveView = useIsActiveView();
   // TODO(@eyhn): remove jotai here
@@ -94,7 +99,6 @@ const DetailPageImpl = memo(function DetailPageImpl() {
 
   useEffect(() => {
     const disposable = AIProvider.slots.requestOpenWithChat.on(params => {
-      console.log(params);
       workbench.openSidebar();
       view.activeSidebarTab('chat');
 
@@ -109,9 +113,11 @@ const DetailPageImpl = memo(function DetailPageImpl() {
   useEffect(() => {
     if (isActiveView) {
       globalContext.docId.set(doc.id);
+      globalContext.isDoc.set(true);
 
       return () => {
         globalContext.docId.set(null);
+        globalContext.isDoc.set(false);
       };
     }
     return;
@@ -128,7 +134,23 @@ const DetailPageImpl = memo(function DetailPageImpl() {
     return;
   }, [doc, globalContext, isActiveView, mode]);
 
-  const isInTrash = useLiveData(doc.meta$.map(meta => meta.trash));
+  useEffect(() => {
+    if ('isMobile' in environment && environment.isMobile) {
+      setDocReadonly(doc.id, true);
+    }
+  }, [doc.id, setDocReadonly]);
+
+  useEffect(() => {
+    if (isActiveView) {
+      globalContext.isTrashDoc.set(!!isInTrash);
+
+      return () => {
+        globalContext.isTrashDoc.set(null);
+      };
+    }
+    return;
+  }, [globalContext, isActiveView, isInTrash]);
+
   useRegisterBlocksuiteEditorCommands();
   const title = useLiveData(doc.title$);
   usePageDocumentTitle(title);
@@ -159,7 +181,7 @@ const DetailPageImpl = memo(function DetailPageImpl() {
       const editorHost = editor.host;
 
       // provide image proxy endpoint to blocksuite
-      editorHost.std.clipboard.use(
+      editorHost?.std.clipboard.use(
         customImageProxyMiddleware(runtimeConfig.imageProxyUrl)
       );
       ImageBlockService.setImageProxyURL(runtimeConfig.imageProxyUrl);
@@ -178,22 +200,22 @@ const DetailPageImpl = memo(function DetailPageImpl() {
 
       // provide page mode and updated date to blocksuite
       const pageService =
-        editorHost.std.spec.getService<PageRootService>('affine:page');
+        editorHost?.std.spec.getService<PageRootService>('affine:page');
       const disposable = new DisposableGroup();
-
-      doc.setMode(mode);
-      disposable.add(
-        pageService.slots.docLinkClicked.on(({ docId, blockId }) => {
-          return blockId
-            ? jumpToPageBlock(docCollection.id, docId, blockId)
-            : openPage(docCollection.id, docId);
-        })
-      );
-      disposable.add(
-        pageService.slots.tagClicked.on(({ tagId }) => {
-          jumpToTag(workspace.id, tagId);
-        })
-      );
+      if (pageService) {
+        disposable.add(
+          pageService.slots.docLinkClicked.on(({ docId, blockId }) => {
+            return blockId
+              ? jumpToPageBlock(docCollection.id, docId, blockId)
+              : openPage(docCollection.id, docId);
+          })
+        );
+        disposable.add(
+          pageService.slots.tagClicked.on(({ tagId }) => {
+            jumpToTag(workspace.id, tagId);
+          })
+        );
+      }
 
       setEditor(editor);
 
@@ -201,16 +223,16 @@ const DetailPageImpl = memo(function DetailPageImpl() {
         disposable.dispose();
       };
     },
-    [
-      doc,
-      mode,
-      jumpToPageBlock,
-      docCollection.id,
-      openPage,
-      jumpToTag,
-      workspace.id,
-    ]
+    [jumpToPageBlock, docCollection.id, openPage, jumpToTag, workspace.id]
   );
+
+  const [refCallback, hasScrollTop] = useHasScrollTop();
+  const dynamicTopBorder = environment.isDesktop;
+
+  const openOutlinePanel = useCallback(() => {
+    workbench.openSidebar();
+    view.activeSidebarTab('outline');
+  }, [workbench, view]);
 
   return (
     <>
@@ -218,12 +240,17 @@ const DetailPageImpl = memo(function DetailPageImpl() {
         <DetailPageHeader page={doc.blockSuiteDoc} workspace={workspace} />
       </ViewHeader>
       <ViewBody>
-        <div className={styles.mainContainer}>
+        <div
+          className={styles.mainContainer}
+          data-dynamic-top-border={dynamicTopBorder}
+          data-has-scroll-top={hasScrollTop}
+        >
           {/* Add a key to force rerender when page changed, to avoid error boundary persisting. */}
           <AffineErrorBoundary key={doc.id}>
             <TopTip pageId={doc.id} workspace={workspace} />
             <Scrollable.Root>
               <Scrollable.Viewport
+                ref={refCallback}
                 className={clsx(
                   'affine-page-viewport',
                   styles.affineDocViewport,
@@ -242,6 +269,11 @@ const DetailPageImpl = memo(function DetailPageImpl() {
                 })}
               />
             </Scrollable.Root>
+            <EditorOutlineViewer
+              editor={editor}
+              show={mode === 'page' && !isSideBarOpen}
+              openOutlinePanel={openOutlinePanel}
+            />
           </AffineErrorBoundary>
           {isInTrash ? <TrashPageFooter /> : null}
         </div>
@@ -256,7 +288,7 @@ const DetailPageImpl = memo(function DetailPageImpl() {
       </ViewSidebarTab>
 
       <ViewSidebarTab tabId="outline" icon={<TocIcon />}>
-        <EditorOutline editor={editor} />
+        <EditorOutlinePanel editor={editor} />
       </ViewSidebarTab>
 
       <ViewSidebarTab tabId="frame" icon={<FrameIcon />}>
@@ -273,7 +305,7 @@ export const DetailPage = ({ pageId }: { pageId: string }): ReactElement => {
   const docsService = useService(DocsService);
   const docRecordList = docsService.list;
   const docListReady = useLiveData(docRecordList.isReady$);
-  const docRecord = docRecordList.doc$(pageId).value;
+  const docRecord = useLiveData(docRecordList.doc$(pageId));
 
   const [doc, setDoc] = useState<Doc | null>(null);
 

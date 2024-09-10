@@ -2,8 +2,12 @@ import { notify } from '@affine/component';
 import { authAtom, openSettingModalAtom } from '@affine/core/atoms';
 import { AIProvider } from '@affine/core/blocksuite/presets/ai';
 import { toggleGeneralAIOnboarding } from '@affine/core/components/affine/ai-onboarding/apis';
-import { mixpanel } from '@affine/core/utils';
-import { getBaseUrl } from '@affine/graphql';
+import { track } from '@affine/core/mixpanel';
+import {
+  getBaseUrl,
+  type getCopilotHistoriesQuery,
+  type RequestOptions,
+} from '@affine/graphql';
 import { Trans } from '@affine/i18n';
 import { UnauthorizedError } from '@blocksuite/blocks';
 import { assertExists } from '@blocksuite/global/utils';
@@ -14,6 +18,7 @@ import type { PromptKey } from './prompt';
 import {
   cleanupSessions,
   createChatSession,
+  forkCopilotSession,
   listHistories,
   textToText,
   toImage,
@@ -22,10 +27,10 @@ import { setupTracker } from './tracker';
 
 const filterStyleToPromptName = new Map(
   Object.entries({
-    'Clay style': 'debug:action:fal-sdturbo-clay',
-    'Pixel style': 'debug:action:fal-sdturbo-pixel',
-    'Sketch style': 'debug:action:fal-sdturbo-sketch',
-    'Anime style': 'debug:action:fal-sdturbo-fantasy',
+    'Clay style': 'workflow:image-clay',
+    'Pixel style': 'workflow:image-pixel',
+    'Sketch style': 'workflow:image-sketch',
+    'Anime style': 'workflow:image-anime',
   })
 );
 
@@ -72,7 +77,8 @@ function setupAIProvider() {
 
   //#region actions
   AIProvider.provide('chat', options => {
-    const sessionId = getChatSessionId(options.workspaceId, options.docId);
+    const sessionId =
+      options.sessionId ?? getChatSessionId(options.workspaceId, options.docId);
     return textToText({
       ...options,
       content: options.input,
@@ -351,13 +357,12 @@ Could you make a new website based on these notes and send back just the html fi
 
   AIProvider.provide('filterImage', options => {
     // test to image
-    const promptName = filterStyleToPromptName.get(
-      options.style as string
-    ) as PromptKey;
+    const promptName = filterStyleToPromptName.get(options.style as string);
     return toImage({
       ...options,
       timeout: 120000,
-      promptName,
+      promptName: promptName as PromptKey,
+      workflow: !!promptName?.startsWith('workflow:'),
     });
   });
 
@@ -377,7 +382,7 @@ Could you make a new website based on these notes and send back just the html fi
     return textToText({
       ...options,
       content: options.input,
-      promptName: 'debug:action:fal-summary-caption',
+      promptName: 'Generate a caption',
     });
   });
 
@@ -404,10 +409,13 @@ Could you make a new website based on these notes and send back just the html fi
     },
     chats: async (
       workspaceId: string,
-      docId?: string
+      docId?: string,
+      options?: RequestOptions<
+        typeof getCopilotHistoriesQuery
+      >['variables']['options']
     ): Promise<BlockSuitePresets.AIHistory[]> => {
       // @ts-expect-error - 'action' is missing in server impl
-      return (await listHistories(workspaceId, docId)) ?? [];
+      return (await listHistories(workspaceId, docId, options)) ?? [];
     },
     cleanup: async (
       workspaceId: string,
@@ -415,6 +423,16 @@ Could you make a new website based on these notes and send back just the html fi
       sessionIds: string[]
     ) => {
       await cleanupSessions({ workspaceId, docId, sessionIds });
+    },
+    ids: async (
+      workspaceId: string,
+      docId?: string,
+      options?: RequestOptions<
+        typeof getCopilotHistoriesQuery
+      >['variables']['options']
+    ): Promise<BlockSuitePresets.AIHistoryIds[]> => {
+      // @ts-expect-error - 'role' is missing type in server impl
+      return await listHistories(workspaceId, docId, options);
     },
   });
 
@@ -443,15 +461,16 @@ Could you make a new website based on these notes and send back just the html fi
 
   AIProvider.provide('onboarding', toggleGeneralAIOnboarding);
 
+  AIProvider.provide('forkChat', options => {
+    return forkCopilotSession(options);
+  });
+
   AIProvider.slots.requestUpgradePlan.on(() => {
     getCurrentStore().set(openSettingModalAtom, {
       activeTab: 'billing',
       open: true,
     });
-    mixpanel.track('PlansViewed', {
-      segment: 'payment wall',
-      category: 'payment wall ai action count',
-    });
+    track.$.paywall.aiAction.viewPlans();
   });
 
   AIProvider.slots.requestLogin.on(() => {

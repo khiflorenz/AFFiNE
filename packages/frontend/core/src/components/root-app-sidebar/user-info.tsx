@@ -1,8 +1,8 @@
 import {
   Avatar,
-  Button,
   Divider,
   ErrorMessage,
+  IconButton,
   Menu,
   MenuIcon,
   MenuItem,
@@ -14,7 +14,7 @@ import {
   openSettingModalAtom,
   openSignOutModalAtom,
 } from '@affine/core/atoms';
-import { mixpanel } from '@affine/core/utils';
+import { track } from '@affine/core/mixpanel';
 import { useI18n } from '@affine/i18n';
 import { AccountIcon, SignOutIcon } from '@blocksuite/icons/rc';
 import { useLiveData, useService } from '@toeverything/infra';
@@ -52,13 +52,9 @@ const menuContentOptions: MenuProps['contentOptions'] = {
 const AuthorizedUserInfo = ({ account }: { account: AuthAccountInfo }) => {
   return (
     <Menu items={<OperationMenu />} contentOptions={menuContentOptions}>
-      <Button
-        data-testid="sidebar-user-avatar"
-        type="plain"
-        className={styles.userInfoWrapper}
-      >
+      <IconButton data-testid="sidebar-user-avatar" variant="plain" size="24">
         <Avatar size={24} name={account.label} url={account.avatar} />
-      </Button>
+      </IconButton>
     </Menu>
   );
 };
@@ -71,14 +67,14 @@ const UnauthorizedUserInfo = () => {
   }, [setOpen]);
 
   return (
-    <Button
+    <IconButton
       onClick={openSignInModal}
       data-testid="sidebar-user-avatar"
-      type="plain"
-      className={styles.userInfoWrapper}
+      variant="plain"
+      size="24"
     >
-      <UnknownUserIcon width={24} height={24} />
-    </Button>
+      <UnknownUserIcon />
+    </IconButton>
   );
 };
 
@@ -87,12 +83,7 @@ const AccountMenu = () => {
   const setOpenSignOutModalAtom = useSetAtom(openSignOutModalAtom);
 
   const onOpenAccountSetting = useCallback(() => {
-    mixpanel.track('AccountSettingsViewed', {
-      // page:
-      segment: 'navigation panel',
-      module: 'profile and badge',
-      control: 'profile and email',
-    });
+    track.$.navigationPanel.profileAndBadge.openSettings({ to: 'account' });
     setSettingModalAtom(prev => ({
       ...prev,
       open: true,

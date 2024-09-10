@@ -449,6 +449,10 @@ export class LiveData<T = unknown>
     ) as any;
   }
 
+  static flat<T>(v: T): Flat<LiveData<T>> {
+    return new LiveData(v).flat();
+  }
+
   waitFor(predicate: (v: T) => unknown, signal?: AbortSignal): Promise<T> {
     return new Promise((resolve, reject) => {
       const subscription = this.subscribe(v => {
@@ -491,7 +495,8 @@ export class LiveData<T = unknown>
       throw this.poisonedError;
     }
     this.ops$.next('watch');
-    setImmediate(() => {
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises -- never throw
+    Promise.resolve().then(() => {
       this.ops$.next('unwatch');
     });
     return this.raw$.value;

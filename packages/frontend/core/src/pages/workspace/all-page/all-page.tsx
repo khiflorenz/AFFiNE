@@ -6,10 +6,21 @@ import {
 import { useBlockSuiteDocMeta } from '@affine/core/hooks/use-block-suite-page-meta';
 import { performanceRenderLogger } from '@affine/core/shared';
 import type { Filter } from '@affine/env/filter';
-import { useService, WorkspaceService } from '@toeverything/infra';
-import { useState } from 'react';
+import { useI18n } from '@affine/i18n';
+import {
+  GlobalContextService,
+  useService,
+  WorkspaceService,
+} from '@toeverything/infra';
+import { useEffect, useState } from 'react';
 
-import { ViewBody, ViewHeader } from '../../../modules/workbench';
+import {
+  useIsActiveView,
+  ViewBody,
+  ViewHeader,
+  ViewIcon,
+  ViewTitle,
+} from '../../../modules/workbench';
 import { EmptyPageList } from '../page-list-empty';
 import * as styles from './all-page.css';
 import { FilterContainer } from './all-page-filter';
@@ -17,6 +28,7 @@ import { AllPageHeader } from './all-page-header';
 
 export const AllPage = () => {
   const currentWorkspace = useService(WorkspaceService).workspace;
+  const globalContext = useService(GlobalContextService).globalContext;
   const pageMetas = useBlockSuiteDocMeta(currentWorkspace.docCollection);
   const [hideHeaderCreateNew, setHideHeaderCreateNew] = useState(true);
 
@@ -25,8 +37,25 @@ export const AllPage = () => {
     filters: filters,
   });
 
+  const isActiveView = useIsActiveView();
+
+  useEffect(() => {
+    if (isActiveView) {
+      globalContext.isAllDocs.set(true);
+
+      return () => {
+        globalContext.isAllDocs.set(false);
+      };
+    }
+    return;
+  }, [globalContext, isActiveView]);
+
+  const t = useI18n();
+
   return (
     <>
+      <ViewTitle title={t['All pages']()} />
+      <ViewIcon icon="allDocs" />
       <ViewHeader>
         <AllPageHeader
           showCreateNew={!hideHeaderCreateNew}

@@ -2,16 +2,15 @@ import { Button, type ButtonProps, useConfirmModal } from '@affine/component';
 import { useDowngradeNotify } from '@affine/core/components/affine/subscription-landing/notify';
 import { getDowngradeQuestionnaireLink } from '@affine/core/hooks/affine/use-subscription-notify';
 import { useAsyncCallback } from '@affine/core/hooks/affine-async-hooks';
+import { track } from '@affine/core/mixpanel';
 import { AuthService, SubscriptionService } from '@affine/core/modules/cloud';
-import { mixpanel } from '@affine/core/utils';
 import { SubscriptionPlan } from '@affine/graphql';
 import { useI18n } from '@affine/i18n';
 import { useService } from '@toeverything/infra';
 import { nanoid } from 'nanoid';
 import { useState } from 'react';
 
-export interface AICancelProps extends ButtonProps {}
-export const AICancel = ({ ...btnProps }: AICancelProps) => {
+export const AICancel = (btnProps: ButtonProps) => {
   const t = useI18n();
   const [isMutating, setMutating] = useState(false);
   const [idempotencyKey, setIdempotencyKey] = useState(nanoid());
@@ -22,26 +21,27 @@ export const AICancel = ({ ...btnProps }: AICancelProps) => {
   const downgradeNotify = useDowngradeNotify();
 
   const cancel = useAsyncCallback(async () => {
-    mixpanel.track('PlanChangeStarted', {
-      segment: 'settings panel',
-      control: 'plan cancel action',
-      type: subscription.ai$.value?.plan,
-      category: subscription.ai$.value?.recurring,
-    });
+    const aiSubscription = subscription.ai$.value;
+    if (aiSubscription) {
+      track.$.settingsPanel.plans.cancelSubscription({
+        plan: SubscriptionPlan.AI,
+        recurring: aiSubscription.recurring,
+      });
+    }
     openConfirmModal({
       title: t['com.affine.payment.ai.action.cancel.confirm.title'](),
       description:
         t['com.affine.payment.ai.action.cancel.confirm.description'](),
       reverseFooter: true,
+      confirmText:
+        t['com.affine.payment.ai.action.cancel.confirm.confirm-text'](),
       confirmButtonOptions: {
-        children:
-          t['com.affine.payment.ai.action.cancel.confirm.confirm-text'](),
-        type: 'default',
+        variant: 'secondary',
       },
       cancelText:
         t['com.affine.payment.ai.action.cancel.confirm.cancel-text'](),
       cancelButtonOptions: {
-        type: 'primary',
+        variant: 'primary',
       },
       onConfirm: async () => {
         try {
@@ -51,9 +51,9 @@ export const AICancel = ({ ...btnProps }: AICancelProps) => {
             SubscriptionPlan.AI
           );
           setIdempotencyKey(nanoid());
-          mixpanel.track('ChangePlanSucceeded', {
-            segment: 'settings panel',
-            control: 'plan cancel action',
+          track.$.settingsPanel.plans.confirmCancelingSubscription({
+            plan: SubscriptionPlan.AI,
+            recurring: aiSubscription?.recurring,
           });
           const account = authService.session.account$.value;
           const prevRecurring = subscription.ai$.value?.recurring;
@@ -83,7 +83,12 @@ export const AICancel = ({ ...btnProps }: AICancelProps) => {
   ]);
 
   return (
-    <Button onClick={cancel} loading={isMutating} type="primary" {...btnProps}>
+    <Button
+      onClick={cancel}
+      loading={isMutating}
+      variant="primary"
+      {...btnProps}
+    >
       {t['com.affine.payment.ai.action.cancel.button-label']()}
     </Button>
   );

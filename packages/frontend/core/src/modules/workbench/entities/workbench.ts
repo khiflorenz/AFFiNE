@@ -1,29 +1,47 @@
 import { Unreachable } from '@affine/env/constant';
 import { Entity, LiveData } from '@toeverything/infra';
-import type { To } from 'history';
+import { type To } from 'history';
 import { nanoid } from 'nanoid';
 
+import type { WorkbenchNewTabHandler } from '../services/workbench-new-tab-handler';
+import type { WorkbenchDefaultState } from '../services/workbench-view-state';
 import { View } from './view';
 
 export type WorkbenchPosition = 'beside' | 'active' | 'head' | 'tail' | number;
 
-interface WorkbenchOpenOptions {
-  at?: WorkbenchPosition;
+type WorkbenchOpenOptions = {
+  at?: WorkbenchPosition | 'new-tab';
   replaceHistory?: boolean;
-}
+  show?: boolean; // only for new tab
+};
 
 export class Workbench extends Entity {
-  readonly views$ = new LiveData([
-    this.framework.createEntity(View, { id: nanoid() }),
-  ]);
+  constructor(
+    private readonly defaultState: WorkbenchDefaultState,
+    private readonly newTabHandler: WorkbenchNewTabHandler
+  ) {
+    super();
+  }
 
-  activeViewIndex$ = new LiveData(0);
+  readonly activeViewIndex$ = new LiveData(this.defaultState.activeViewIndex);
+  readonly basename$ = new LiveData(this.defaultState.basename);
+
+  readonly views$: LiveData<View[]> = new LiveData(
+    this.defaultState.views.map(meta => {
+      return this.framework.createEntity(View, {
+        id: meta.id,
+        defaultLocation: meta.path,
+        icon: meta.icon,
+        title: meta.title,
+      });
+    })
+  );
+
   activeView$ = LiveData.computed(get => {
     const activeIndex = get(this.activeViewIndex$);
     const views = get(this.views$);
-    return views[activeIndex];
+    return views[activeIndex]; // todo: this could be null
   });
-  basename$ = new LiveData('/');
   location$ = LiveData.computed(get => {
     return get(get(this.activeView$).location$);
   });
@@ -32,6 +50,10 @@ export class Workbench extends Entity {
   active(index: number) {
     index = Math.max(0, Math.min(index, this.views$.value.length - 1));
     this.activeViewIndex$.next(index);
+  }
+
+  updateBasename(basename: string) {
+    this.basename$.next(basename);
   }
 
   createView(at: WorkbenchPosition = 'beside', defaultLocation: To) {
@@ -59,24 +81,43 @@ export class Workbench extends Entity {
     this.sidebarOpen$.next(!this.sidebarOpen$.value);
   }
 
-  open(
-    to: To,
-    { at = 'active', replaceHistory = false }: WorkbenchOpenOptions = {}
-  ) {
-    let view = this.viewAt(at);
-    if (!view) {
-      const newIndex = this.createView(at, to);
-      view = this.viewAt(newIndex);
-      if (!view) {
-        throw new Unreachable();
-      }
+  open(to: To, option: WorkbenchOpenOptions = {}) {
+    if (option.at === 'new-tab') {
+      this.newTab(to, {
+        show: option.show,
+      });
     } else {
-      if (replaceHistory) {
-        view.history.replace(to);
+      const { at = 'active', replaceHistory = false } = option;
+      let view = this.viewAt(at);
+      if (!view) {
+        const newIndex = this.createView(at, to);
+        view = this.viewAt(newIndex);
+        if (!view) {
+          throw new Unreachable();
+        }
       } else {
-        view.history.push(to);
+        if (replaceHistory) {
+          view.history.replace(to);
+        } else {
+          view.history.push(to);
+        }
       }
     }
+  }
+
+  newTab(
+    to: To,
+    {
+      show,
+    }: {
+      show?: boolean;
+    } = {}
+  ) {
+    this.newTabHandler({
+      basename: this.basename$.value,
+      to,
+      show: show ?? true,
+    });
   }
 
   openDoc(

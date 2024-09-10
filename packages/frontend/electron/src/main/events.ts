@@ -1,5 +1,6 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, WebContentsView } from 'electron';
 
+import { AFFINE_EVENT_CHANNEL_NAME } from '../shared/type';
 import { applicationMenuEvents } from './application-menu';
 import { logger } from './logger';
 import { sharedStorageEvents } from './shared-storage';
@@ -18,12 +19,13 @@ function getActiveWindows() {
 }
 
 export function registerEvents() {
+  const unsubs: (() => void)[] = [];
   // register events
   for (const [namespace, namespaceEvents] of Object.entries(allEvents)) {
     for (const [key, eventRegister] of Object.entries(namespaceEvents)) {
-      const subscription = eventRegister((...args: any[]) => {
+      const unsubscribe = eventRegister((...args: any[]) => {
         const chan = `${namespace}:${key}`;
-        logger.info(
+        logger.debug(
           '[ipc-event]',
           chan,
           args.filter(
@@ -33,11 +35,33 @@ export function registerEvents() {
               typeof a !== 'object'
           )
         );
-        getActiveWindows().forEach(win => win.webContents.send(chan, ...args));
+        // is this efficient?
+        getActiveWindows().forEach(win => {
+          if (win.isDestroyed()) {
+            return;
+          }
+          // .webContents could be undefined if the window is destroyed
+          win.webContents?.send(AFFINE_EVENT_CHANNEL_NAME, chan, ...args);
+          win.contentView.children.forEach(child => {
+            if (
+              child instanceof WebContentsView &&
+              child.webContents &&
+              !child.webContents.isDestroyed()
+            ) {
+              child.webContents?.send(AFFINE_EVENT_CHANNEL_NAME, chan, ...args);
+            }
+          });
+        });
       });
-      app.on('before-quit', () => {
-        subscription();
-      });
+      unsubs.push(unsubscribe);
     }
   }
+  app.on('before-quit', () => {
+    // subscription on quit sometimes crashes the app
+    try {
+      unsubs.forEach(unsub => unsub());
+    } catch (err) {
+      logger.error('unsubscribe error', err);
+    }
+  });
 }

@@ -194,6 +194,12 @@ export class ChatSessionService {
 
       // find existing session if session is chat session
       if (!state.prompt.action) {
+        const extraCondition: Record<string, any> = {};
+        if (state.parentSessionId) {
+          // also check session id if provided session is forked session
+          extraCondition.id = state.sessionId;
+          extraCondition.parentSessionId = state.parentSessionId;
+        }
         const { id, deletedAt } =
           (await tx.aiSession.findFirst({
             where: {
@@ -201,7 +207,8 @@ export class ChatSessionService {
               workspaceId: state.workspaceId,
               docId: state.docId,
               prompt: { action: { equals: null } },
-              parentSessionId: state.parentSessionId,
+              parentSessionId: null,
+              ...extraCondition,
             },
             select: { id: true, deletedAt: true },
           })) || {};
@@ -276,7 +283,13 @@ export class ChatSessionService {
           docId: true,
           parentSessionId: true,
           messages: {
-            select: { id: true, role: true, content: true, createdAt: true },
+            select: {
+              id: true,
+              role: true,
+              content: true,
+              attachments: true,
+              createdAt: true,
+            },
             orderBy: { createdAt: 'asc' },
           },
           promptName: true,
@@ -564,6 +577,7 @@ export class ChatSessionService {
 
     const forkedState = {
       ...state,
+      userId: options.userId,
       sessionId: randomUUID(),
       messages: [],
       parentSessionId: options.sessionId,

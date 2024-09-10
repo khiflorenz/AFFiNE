@@ -1,6 +1,6 @@
 import { useUpgradeNotify } from '@affine/core/components/affine/subscription-landing/notify';
+import { track } from '@affine/core/mixpanel';
 import { SubscriptionPlan, SubscriptionRecurring } from '@affine/graphql';
-import mixpanel from 'mixpanel-browser';
 import { nanoid } from 'nanoid';
 import { useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -129,11 +129,9 @@ export const useSubscriptionNotifyReader = () => {
       upgradeNotify(link);
       localStorage.removeItem(localStorageKey);
 
-      // mixpanel
-      mixpanel.track('PlanUpgradeSucceeded', {
-        segment: 'settings panel',
-        control: 'plan upgrade action',
-        plan: plan,
+      track.$.settingsPanel.plans.subscribe({
+        plan,
+        recurring,
       });
     } catch (err) {
       console.error('Failed to parse subscription callback link', err);

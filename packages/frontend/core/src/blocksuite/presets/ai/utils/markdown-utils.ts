@@ -148,6 +148,7 @@ export const markdownToSnapshot = async (
 export async function insertFromMarkdown(
   host: EditorHost,
   markdown: string,
+  doc: Doc,
   parent?: string,
   index?: number
 ) {
@@ -160,7 +161,7 @@ export async function insertFromMarkdown(
     const blockSnapshot = snapshots[i];
     const model = await job.snapshotToBlock(
       blockSnapshot,
-      host.std.doc,
+      doc,
       parent,
       (index ?? 0) + i
     );
@@ -186,7 +187,11 @@ export async function replaceFromMarkdown(
 export async function markDownToDoc(host: EditorHost, answer: string) {
   const schema = host.std.doc.collection.schema;
   // Should not create a new doc in the original collection
-  const collection = new DocCollection({ schema });
+  const collection = new DocCollection({
+    schema,
+    disableBacklinkIndex: true,
+    disableSearchIndex: true,
+  });
   collection.meta.initialize();
   const job = new Job({
     collection,

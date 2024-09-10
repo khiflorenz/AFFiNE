@@ -9,6 +9,7 @@ import { Button, IconButton } from '@affine/component/ui/button';
 import { Loading } from '@affine/component/ui/loading';
 import { getUpgradeQuestionnaireLink } from '@affine/core/hooks/affine/use-subscription-notify';
 import { useAsyncCallback } from '@affine/core/hooks/affine-async-hooks';
+import { track } from '@affine/core/mixpanel';
 import type { InvoicesQuery } from '@affine/graphql';
 import {
   createCustomerPortalMutation,
@@ -32,7 +33,7 @@ import {
 import { useMutation } from '../../../../../hooks/use-mutation';
 import { useQuery } from '../../../../../hooks/use-query';
 import { AuthService, SubscriptionService } from '../../../../../modules/cloud';
-import { mixpanel, popupWindow } from '../../../../../utils';
+import { popupWindow } from '../../../../../utils';
 import { SWRErrorBoundary } from '../../../../pure/swr-error-bundary';
 import { CancelAction, ResumeAction } from '../plans/actions';
 import { AICancel, AIResume, AISubscribe } from '../plans/ai/actions';
@@ -111,22 +112,14 @@ const SubscriptionSettings = () => {
 
   const openPlans = useCallback(
     (scrollAnchor?: PlansScrollAnchor) => {
-      mixpanel.track('PlansViewed', {
-        type: proSubscription?.plan,
-        category: proSubscription?.recurring,
-        // page:
-        segment: 'settings panel',
-        module: 'billing subscription list',
-        control: 'change plan button',
-      });
-
+      track.$.settingsPanel.billing.viewPlans();
       setOpenSettingModalAtom({
         open: true,
         activeTab: 'plans',
         scrollAnchor: scrollAnchor,
       });
     },
-    [proSubscription?.plan, proSubscription?.recurring, setOpenSettingModalAtom]
+    [setOpenSettingModalAtom]
   );
   const gotoCloudPlansSetting = useCallback(
     () => openPlans('cloudPricingPlan'),
@@ -221,7 +214,8 @@ const SubscriptionSettings = () => {
                 })}
               />
             )}
-            {proSubscription.end && proSubscription.canceledAt ? (
+            {isBeliever ? null : proSubscription.end &&
+              proSubscription.canceledAt ? (
               <SettingRow
                 name={t['com.affine.payment.billing-setting.expiration-date']()}
                 desc={t[
@@ -242,13 +236,6 @@ const SubscriptionSettings = () => {
                 <SettingRow
                   style={{ cursor: 'pointer' }}
                   onClick={() => {
-                    mixpanel.track('PlanChangeStarted', {
-                      segment: 'settings panel',
-                      module: 'billing subscription list',
-                      control: 'plan cancel action',
-                      type: proSubscription.plan,
-                      category: proSubscription.recurring,
-                    });
                     setOpenCancelModal(true);
                   }}
                   className="dangerous-setting"
@@ -303,9 +290,7 @@ const TypeFormLink = () => {
       desc={t['com.affine.payment.billing-type-form.description']()}
     >
       <a target="_blank" href={link} rel="noreferrer">
-        <Button style={{ padding: '4px 12px' }}>
-          {t['com.affine.payment.billing-type-form.go']()}
-        </Button>
+        <Button>{t['com.affine.payment.billing-type-form.go']()}</Button>
       </a>
     </SettingRow>
   );
@@ -433,7 +418,7 @@ const PlanAction = ({
   return (
     <Button
       className={styles.planAction}
-      type="primary"
+      variant="primary"
       onClick={gotoPlansSetting}
     >
       {plan === SubscriptionPlan.Pro
@@ -458,12 +443,7 @@ const PaymentMethodUpdater = () => {
   }, [trigger]);
 
   return (
-    <Button
-      className={styles.button}
-      onClick={update}
-      loading={isMutating}
-      disabled={isMutating}
-    >
+    <Button onClick={update} loading={isMutating} disabled={isMutating}>
       {t['com.affine.payment.billing-setting.update']()}
     </Button>
   );
@@ -475,18 +455,16 @@ const ResumeSubscription = () => {
   const subscription = useService(SubscriptionService).subscription;
   const handleClick = useCallback(() => {
     setOpen(true);
-    mixpanel.track('PlanChangeStarted', {
-      segment: 'settings panel',
-      module: 'pricing plan list',
-      control: 'plan resume action',
-      type: subscription.pro$.value?.plan,
-      category: subscription.pro$.value?.recurring,
-    });
-  }, [subscription.pro$.value?.plan, subscription.pro$.value?.recurring]);
+  }, []);
 
   return (
     <ResumeAction open={open} onOpenChange={setOpen}>
-      <Button className={styles.button} onClick={handleClick}>
+      <Button
+        onClick={handleClick}
+        data-event-props="$.settingsPanel.plans.resumeSubscription"
+        data-event-args-type={subscription.pro$.value?.plan}
+        data-event-args-category={subscription.pro$.value?.recurring}
+      >
         {t['com.affine.payment.billing-setting.resume-subscription']()}
       </Button>
     </ResumeAction>
@@ -497,10 +475,11 @@ const CancelSubscription = ({ loading }: { loading?: boolean }) => {
   return (
     <IconButton
       style={{ pointerEvents: 'none' }}
-      icon={<ArrowRightSmallIcon />}
       disabled={loading}
       loading={loading}
-    />
+    >
+      <ArrowRightSmallIcon />
+    </IconButton>
   );
 };
 
@@ -577,7 +556,7 @@ const InvoiceLine = ({
           : ''
       } $${invoice.amount / 100} - ${planText}`}
     >
-      <Button className={styles.button} onClick={open}>
+      <Button onClick={open}>
         {t['com.affine.payment.billing-setting.view-invoice']()}
       </Button>
     </SettingRow>

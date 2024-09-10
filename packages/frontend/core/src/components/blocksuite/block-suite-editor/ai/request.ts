@@ -1,4 +1,5 @@
 import { AIProvider } from '@affine/core/blocksuite/presets/ai';
+import type { ForkChatSessionInput } from '@affine/graphql';
 import { assertExists } from '@blocksuite/global/utils';
 import { partition } from 'lodash-es';
 
@@ -23,6 +24,7 @@ export type TextToTextOptions = {
   signal?: AbortSignal;
   retry?: boolean;
   workflow?: boolean;
+  isRootSession?: boolean;
   postfix?: (text: string) => string;
 };
 
@@ -42,6 +44,10 @@ export function createChatSession({
     docId,
     promptName: 'chat:gpt4',
   });
+}
+
+export function forkCopilotSession(forkChatSessionInput: ForkChatSessionInput) {
+  return client.forkSession(forkChatSessionInput);
 }
 
 async function resizeImage(blob: Blob | File): Promise<Blob | null> {
@@ -146,6 +152,7 @@ export function textToText({
   timeout = TIMEOUT,
   retry = false,
   workflow = false,
+  isRootSession = false,
   postfix,
 }: TextToTextOptions) {
   let _sessionId: string;
@@ -183,6 +190,9 @@ export function textToText({
           workflow ? 'workflow' : undefined
         );
         AIProvider.LAST_ACTION_SESSIONID = _sessionId;
+        if (isRootSession) {
+          AIProvider.LAST_ROOT_SESSION_ID = _sessionId;
+        }
 
         if (signal) {
           if (signal.aborted) {
@@ -245,6 +255,10 @@ export function textToText({
         }
 
         AIProvider.LAST_ACTION_SESSIONID = _sessionId;
+        if (isRootSession) {
+          AIProvider.LAST_ROOT_SESSION_ID = _sessionId;
+        }
+
         return client.chatText({
           sessionId: _sessionId,
           messageId: _messageId,
@@ -255,6 +269,8 @@ export function textToText({
 }
 
 export const listHistories = client.getHistories;
+
+export const listHistoryIds = client.getHistoryIds;
 
 // Only one image is currently being processed
 export function toImage({
@@ -269,6 +285,7 @@ export function toImage({
   signal,
   timeout = TIMEOUT,
   retry = false,
+  workflow = false,
 }: ToImageOptions) {
   let _sessionId: string;
   let _messageId: string | undefined;
@@ -293,7 +310,12 @@ export function toImage({
         _messageId = messageId;
       }
 
-      const eventSource = client.imagesStream(_sessionId, _messageId, seed);
+      const eventSource = client.imagesStream(
+        _sessionId,
+        _messageId,
+        seed,
+        workflow ? 'workflow' : undefined
+      );
       AIProvider.LAST_ACTION_SESSIONID = _sessionId;
 
       for await (const event of toTextStream(eventSource, {

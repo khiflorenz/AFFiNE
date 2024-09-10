@@ -30,6 +30,8 @@ export const runtimeFlagsSchema = z.object({
   enableEnhanceShareMode: z.boolean(),
   enableExperimentalFeature: z.boolean(),
   enableInfoModal: z.boolean(),
+  enableOrganize: z.boolean(),
+  enableThemeEditor: z.boolean(),
 });
 
 export type RuntimeConfig = z.infer<typeof runtimeFlagsSchema>;

@@ -1,5 +1,4 @@
 import type { INestApplication } from '@nestjs/common';
-import { hashSync } from '@node-rs/argon2';
 import request, { type Response } from 'supertest';
 
 import {
@@ -54,7 +53,7 @@ export async function signUp(
   const user = await app.get(UserService).createUser({
     name,
     email,
-    password: hashSync(password),
+    password,
     emailVerifiedAt: autoVerifyEmail ? new Date() : null,
   });
   const { sessionId } = await app.get(AuthService).createUserSession(user);
@@ -130,26 +129,23 @@ export async function sendSetPasswordEmail(
 
 export async function changePassword(
   app: INestApplication,
-  userToken: string,
+  userId: string,
   token: string,
   password: string
 ): Promise<string> {
   const res = await request(app.getHttpServer())
     .post(gql)
-    .auth(userToken, { type: 'bearer' })
     .set({ 'x-request-id': 'test', 'x-operation-name': 'test' })
     .send({
       query: `
-            mutation changePassword($token: String!, $password: String!) {
-              changePassword(token: $token, newPassword: $password) {
-                id
-              }
+            mutation changePassword($token: String!, $userId: String!, $password: String!) {
+              changePassword(token: $token, userId: $userId, newPassword: $password)
             }
           `,
-      variables: { token, password },
+      variables: { token, password, userId },
     })
     .expect(200);
-  return res.body.data.changePassword.id;
+  return res.body.data.changePassword;
 }
 
 export async function sendVerifyChangeEmail(

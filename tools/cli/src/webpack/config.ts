@@ -80,7 +80,7 @@ export const getPublicPath = (buildFlags: BuildFlags) => {
     return `https://dev.affineassets.com/`;
   } else if (BUILD_TYPE === 'beta') {
     return `https://beta.affineassets.com/`;
-  } else if (BUILD_TYPE === 'prod') {
+  } else if (BUILD_TYPE === 'stable') {
     return `https://prod.affineassets.com/`;
   }
   return publicPath;
@@ -329,7 +329,8 @@ export const createConfiguration: (
       IN_CI ? null : new webpack.ProgressPlugin({ percentBy: 'entries' }),
       buildFlags.mode === 'development'
         ? new ReactRefreshWebpackPlugin({ overlay: false, esModule: true })
-        : new MiniCssExtractPlugin({
+        : // todo: support multiple entry points
+          new MiniCssExtractPlugin({
             filename: `[name].[contenthash:8].css`,
             ignoreOrder: true,
           }),
@@ -368,6 +369,9 @@ export const createConfiguration: (
         ? new WebpackS3Plugin()
         : null,
     ]),
+    stats: {
+      errorDetails: true,
+    },
 
     optimization: OptimizeOptionOptions(buildFlags),
 

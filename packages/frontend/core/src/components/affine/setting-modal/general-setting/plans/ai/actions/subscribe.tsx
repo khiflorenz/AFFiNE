@@ -1,8 +1,9 @@
 import { Button, type ButtonProps, Skeleton } from '@affine/component';
 import { generateSubscriptionCallbackLink } from '@affine/core/hooks/affine/use-subscription-notify';
 import { useAsyncCallback } from '@affine/core/hooks/affine-async-hooks';
+import { track } from '@affine/core/mixpanel';
 import { AuthService, SubscriptionService } from '@affine/core/modules/cloud';
-import { mixpanel, popupWindow } from '@affine/core/utils';
+import { popupWindow } from '@affine/core/utils';
 import { SubscriptionPlan, SubscriptionRecurring } from '@affine/graphql';
 import { useI18n } from '@affine/i18n';
 import { useLiveData, useService } from '@toeverything/infra';
@@ -49,9 +50,9 @@ export const AISubscribe = ({
 
   const subscribe = useAsyncCallback(async () => {
     setMutating(true);
-    mixpanel.track('PlanUpgradeStarted', {
-      category: SubscriptionRecurring.Yearly,
-      type: SubscriptionPlan.AI,
+    track.$.settingsPanel.plans.checkout({
+      plan: SubscriptionPlan.AI,
+      recurring: SubscriptionRecurring.Yearly,
     });
     try {
       const session = await subscriptionService.createCheckoutSession({
@@ -101,7 +102,7 @@ export const AISubscribe = ({
     <Button
       loading={isMutating}
       onClick={subscribe}
-      type="primary"
+      variant="primary"
       {...btnProps}
     >
       {btnProps.children ?? `${priceReadable} / ${priceFrequency}`}

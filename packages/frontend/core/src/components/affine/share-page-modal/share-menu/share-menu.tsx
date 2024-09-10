@@ -21,6 +21,7 @@ export interface ShareMenuProps extends PropsWithChildren {
   workspaceMetadata: WorkspaceMetadata;
   currentPage: Doc;
   onEnableAffineCloud: () => void;
+  onOpenShareModal?: (open: boolean) => void;
 }
 
 export const ShareMenuContent = (props: ShareMenuProps) => {
@@ -55,7 +56,7 @@ const DefaultShareButton = forwardRef(function DefaultShareButton(
   }, [shareService]);
 
   return (
-    <Button ref={ref} className={styles.shareButton} type="primary">
+    <Button ref={ref} className={styles.shareButton} variant="primary">
       {shared
         ? t['com.affine.share-menu.sharedButton']()
         : t['com.affine.share-menu.shareButton']()}
@@ -73,6 +74,7 @@ const LocalShareMenu = (props: ShareMenuProps) => {
       }}
       rootOptions={{
         modal: false,
+        onOpenChange: props.onOpenShareModal,
       }}
     >
       <div data-testid="local-share-menu-button">
@@ -92,6 +94,7 @@ const CloudShareMenu = (props: ShareMenuProps) => {
       }}
       rootOptions={{
         modal: false,
+        onOpenChange: props.onOpenShareModal,
       }}
     >
       <div data-testid="cloud-share-menu-button">

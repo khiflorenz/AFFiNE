@@ -101,6 +101,12 @@ export class InvalidPasswordLength extends UserFriendlyError {
   }
 }
 
+export class PasswordRequired extends UserFriendlyError {
+  constructor(message?: string) {
+    super('invalid_input', 'password_required', message);
+  }
+}
+
 export class WrongSignInMethod extends UserFriendlyError {
   constructor(message?: string) {
     super('invalid_input', 'wrong_sign_in_method', message);
@@ -128,6 +134,12 @@ export class EmailTokenNotFound extends UserFriendlyError {
 export class InvalidEmailToken extends UserFriendlyError {
   constructor(message?: string) {
     super('invalid_input', 'invalid_email_token', message);
+  }
+}
+
+export class LinkExpired extends UserFriendlyError {
+  constructor(message?: string) {
+    super('bad_request', 'link_expired', message);
   }
 }
 
@@ -481,6 +493,18 @@ export class MailerServiceIsNotConfigured extends UserFriendlyError {
     super('internal_server_error', 'mailer_service_is_not_configured', message);
   }
 }
+
+export class CannotDeleteAllAdminAccount extends UserFriendlyError {
+  constructor(message?: string) {
+    super('action_forbidden', 'cannot_delete_all_admin_account', message);
+  }
+}
+
+export class CannotDeleteOwnAccount extends UserFriendlyError {
+  constructor(message?: string) {
+    super('action_forbidden', 'cannot_delete_own_account', message);
+  }
+}
 export enum ErrorNames {
   INTERNAL_SERVER_ERROR,
   TOO_MANY_REQUEST,
@@ -496,11 +520,13 @@ export enum ErrorNames {
   OAUTH_ACCOUNT_ALREADY_CONNECTED,
   INVALID_EMAIL,
   INVALID_PASSWORD_LENGTH,
+  PASSWORD_REQUIRED,
   WRONG_SIGN_IN_METHOD,
   EARLY_ACCESS_REQUIRED,
   SIGN_UP_FORBIDDEN,
   EMAIL_TOKEN_NOT_FOUND,
   INVALID_EMAIL_TOKEN,
+  LINK_EXPIRED,
   AUTHENTICATION_REQUIRED,
   ACTION_FORBIDDEN,
   ACCESS_DENIED,
@@ -544,7 +570,9 @@ export enum ErrorNames {
   COPILOT_QUOTA_EXCEEDED,
   RUNTIME_CONFIG_NOT_FOUND,
   INVALID_RUNTIME_CONFIG_TYPE,
-  MAILER_SERVICE_IS_NOT_CONFIGURED
+  MAILER_SERVICE_IS_NOT_CONFIGURED,
+  CANNOT_DELETE_ALL_ADMIN_ACCOUNT,
+  CANNOT_DELETE_OWN_ACCOUNT
 }
 registerEnumType(ErrorNames, {
   name: 'ErrorNames'

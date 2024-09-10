@@ -1,4 +1,4 @@
-import type { BlockElement } from '@blocksuite/block-std';
+import type { BlockComponent, EditorHost } from '@blocksuite/block-std';
 import {
   AffineReference,
   type EmbedLinkedDocModel,
@@ -7,6 +7,7 @@ import {
   type SurfaceRefBlockComponent,
   type SurfaceRefBlockModel,
 } from '@blocksuite/blocks';
+import type { AIChatBlockModel } from '@blocksuite/presets';
 import type { BlockModel } from '@blocksuite/store';
 import { type DocMode, Entity, LiveData } from '@toeverything/infra';
 import type { TemplateResult } from 'lit';
@@ -17,7 +18,7 @@ import type { WorkbenchService } from '../../workbench';
 
 export type PeekViewTarget =
   | HTMLElement
-  | BlockElement
+  | BlockComponent
   | AffineReference
   | HTMLAnchorElement
   | { docId: string; blockId?: string };
@@ -36,6 +37,13 @@ export type ImagePeekViewInfo = {
   blockId: string;
 };
 
+export type AIChatBlockPeekViewInfo = {
+  type: 'ai-chat-block';
+  docId: string;
+  host: EditorHost;
+  model: AIChatBlockModel;
+};
+
 export type CustomTemplatePeekViewInfo = {
   type: 'template';
   template: TemplateResult;
@@ -43,7 +51,11 @@ export type CustomTemplatePeekViewInfo = {
 
 export type ActivePeekView = {
   target: PeekViewTarget;
-  info: DocPeekViewInfo | ImagePeekViewInfo | CustomTemplatePeekViewInfo;
+  info:
+    | DocPeekViewInfo
+    | ImagePeekViewInfo
+    | CustomTemplatePeekViewInfo
+    | AIChatBlockPeekViewInfo;
 };
 
 const EMBED_DOC_FLAVOURS = [
@@ -67,6 +79,12 @@ const isSurfaceRefModel = (
   blockModel: BlockModel
 ): blockModel is SurfaceRefBlockModel => {
   return blockModel.flavour === 'affine:surface-ref';
+};
+
+const isAIChatBlockModel = (
+  blockModel: BlockModel
+): blockModel is AIChatBlockModel => {
+  return blockModel.flavour === 'affine:embed-ai-chat';
 };
 
 function resolvePeekInfoFromPeekTarget(
@@ -112,6 +130,13 @@ function resolvePeekInfoFromPeekTarget(
         type: 'image',
         docId: blockModel.doc.id,
         blockId: blockModel.id,
+      };
+    } else if (isAIChatBlockModel(blockModel)) {
+      return {
+        type: 'ai-chat-block',
+        docId: blockModel.doc.id,
+        model: blockModel,
+        host: peekTarget.host,
       };
     }
   } else if (peekTarget instanceof HTMLAnchorElement) {
@@ -175,7 +200,10 @@ export class PeekViewEntity extends Entity {
     this._active$.next({ target, info: resolvedInfo });
     this._show$.next({
       value: true,
-      animation: resolvedInfo.type === 'doc' ? 'zoom' : 'fade',
+      animation:
+        resolvedInfo.type === 'doc' || resolvedInfo.type === 'ai-chat-block'
+          ? 'zoom'
+          : 'fade',
     });
     return firstValueFrom(race(this._active$, this.show$).pipe(map(() => {})));
   };

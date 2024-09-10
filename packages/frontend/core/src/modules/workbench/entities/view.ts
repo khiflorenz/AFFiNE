@@ -3,17 +3,27 @@ import type { Location, To } from 'history';
 import { Observable } from 'rxjs';
 
 import { createNavigableHistory } from '../../../utils/navigable-history';
+import type { ViewIconName } from '../constants';
 import { ViewScope } from '../scopes/view';
 import { SidebarTab } from './sidebar-tab';
 
 export class View extends Entity<{
   id: string;
   defaultLocation?: To | undefined;
+  title?: string;
+  icon?: ViewIconName;
 }> {
   scope = this.framework.createScope(ViewScope, {
     view: this as View,
   });
-  id = this.props.id;
+
+  get id() {
+    return this.props.id;
+  }
+
+  set id(id: string) {
+    this.props.id = id;
+  }
 
   sidebarTabs$ = new LiveData<SidebarTab[]>([]);
 
@@ -63,6 +73,10 @@ export class View extends Entity<{
 
   size$ = new LiveData(100);
 
+  title$ = new LiveData(this.props.title ?? '');
+
+  icon$ = new LiveData(this.props.icon ?? 'allDocs');
+
   push(path: To) {
     this.history.push(path);
   }
@@ -97,5 +111,13 @@ export class View extends Entity<{
 
   activeSidebarTab(id: string | null) {
     this._activeSidebarTabId$.next(id);
+  }
+
+  setTitle(title: string) {
+    this.title$.next(title);
+  }
+
+  setIcon(icon: ViewIconName) {
+    this.icon$.next(icon);
   }
 }
