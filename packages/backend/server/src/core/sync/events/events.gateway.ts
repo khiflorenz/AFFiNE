@@ -50,12 +50,7 @@ function Awareness(workspaceId: string): `${string}:awareness` {
   return `${workspaceId}:awareness`;
 }
 
-@WebSocketGateway({
-  cors: !AFFiNE.node.prod,
-  transports: ['websocket'],
-  // see: https://socket.io/docs/v4/server-options/#maxhttpbuffersize
-  maxHttpBufferSize: 1e8, // 100 MB
-})
+@WebSocketGateway()
 export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   protected logger = new Logger(EventsGateway.name);
   private connectionCount = 0;
@@ -223,8 +218,10 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     };
   }
 
+  @Auth()
   @SubscribeMessage('client-update-v2')
   async handleClientUpdateV2(
+    @CurrentUser() user: CurrentUser,
     @MessageBody()
     {
       workspaceId,
@@ -244,7 +241,8 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const timestamp = await this.docManager.batchPush(
       docId.workspace,
       docId.guid,
-      buffers
+      buffers,
+      user,
     );
 
     client

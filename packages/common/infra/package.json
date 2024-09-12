@@ -14,9 +14,10 @@
     "@affine/debug": "workspace:*",
     "@affine/env": "workspace:*",
     "@affine/templates": "workspace:*",
-    "@blocksuite/blocks": "0.16.0-canary-202407040721-5bf36c3",
-    "@blocksuite/global": "0.16.0-canary-202407040721-5bf36c3",
-    "@blocksuite/store": "0.16.0-canary-202407040721-5bf36c3",
+    "@blocksuite/blocks": "0.17.0-canary-202408121434-8bc42f0",
+    "@blocksuite/global": "0.17.0-canary-202408121434-8bc42f0",
+    "@blocksuite/presets": "0.17.0-canary-202408121434-8bc42f0",
+    "@blocksuite/store": "0.17.0-canary-202408121434-8bc42f0",
     "@datastructures-js/binary-search-tree": "^5.3.2",
     "foxact": "^0.2.33",
     "fuse.js": "^7.0.0",
@@ -33,15 +34,15 @@
   "devDependencies": {
     "@affine-test/fixtures": "workspace:*",
     "@affine/templates": "workspace:*",
-    "@blocksuite/block-std": "0.16.0-canary-202407040721-5bf36c3",
-    "@blocksuite/presets": "0.16.0-canary-202407040721-5bf36c3",
+    "@blocksuite/block-std": "0.17.0-canary-202408121434-8bc42f0",
+    "@blocksuite/presets": "0.17.0-canary-202408121434-8bc42f0",
     "@testing-library/react": "^16.0.0",
     "async-call-rpc": "^6.4.0",
     "fake-indexeddb": "^6.0.0",
     "react": "^18.2.0",
     "rxjs": "^7.8.1",
     "vite": "^5.2.8",
-    "vite-plugin-dts": "3.9.1",
+    "vite-plugin-dts": "4.0.2",
     "vitest": "1.6.0"
   },
   "peerDependencies": {
@@ -72,5 +73,5 @@
       "optional": true
     }
   },
-  "version": "0.15.0"
+  "version": "0.16.0"
 }

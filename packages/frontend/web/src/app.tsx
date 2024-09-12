@@ -5,7 +5,10 @@ import { NotificationCenter } from '@affine/component';
 import { AffineContext } from '@affine/component/context';
 import { GlobalLoading } from '@affine/component/global-loading';
 import { AppFallback } from '@affine/core/components/affine/app-container';
-import { configureCommonModules, configureImpls } from '@affine/core/modules';
+import { configureCommonModules } from '@affine/core/modules';
+import { configureLocalStorageStateStorageImpls } from '@affine/core/modules/storage';
+import { CustomThemeModifier } from '@affine/core/modules/theme-editor';
+import { configureBrowserWorkbenchModule } from '@affine/core/modules/workbench';
 import {
   configureBrowserWorkspaceFlavours,
   configureIndexedDBWorkspaceEngineStorageProvider,
@@ -69,7 +72,8 @@ let languageLoadingPromise: Promise<void> | null = null;
 
 const framework = new Framework();
 configureCommonModules(framework);
-configureImpls(framework);
+configureBrowserWorkbenchModule(framework);
+configureLocalStorageStateStorageImpls(framework);
 configureBrowserWorkspaceFlavours(framework);
 configureIndexedDBWorkspaceEngineStorageProvider(framework);
 const frameworkProvider = framework.provider();
@@ -93,6 +97,7 @@ export function App() {
         <CacheProvider value={cache}>
           <AffineContext store={getCurrentStore()}>
             <Telemetry />
+            <CustomThemeModifier />
             <DebugProvider>
               <GlobalLoading />
               <NotificationCenter />

@@ -58,7 +58,6 @@ jobs:
         run: yarn nx build @affine/web --skip-nx-cache
         env:
           BUILD_TYPE: ${{ github.event.inputs.flavor }}
-          SHOULD_REPORT_TRACE: false
           PUBLIC_PATH: '/'
           SELF_HOSTED: true
           MIXPANEL_TOKEN: ${{ secrets.MIXPANEL_TOKEN }}
@@ -86,7 +85,6 @@ jobs:
         run: yarn nx build @affine/admin --skip-nx-cache
         env:
           BUILD_TYPE: ${{ github.event.inputs.flavor }}
-          SHOULD_REPORT_TRACE: false
           PUBLIC_PATH: '/admin/'
           SELF_HOSTED: true
           MIXPANEL_TOKEN: ${{ secrets.MIXPANEL_TOKEN }}
@@ -177,13 +175,12 @@ jobs:
             echo "RELEASE_FLAVOR=${{ inputs.flavor }}" >> "$GITHUB_ENV"
           fi
 
-      - name: Login to GitHub Container Registry
+      - name: Login to Dockerhub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
           logout: false
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
@@ -231,4 +228,4 @@ jobs:
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           provenance: true
           file: .github/deployment/node/Dockerfile
-          tags: ghcr.io/toeverything/affine-graphql:${{env.RELEASE_FLAVOR}}-${{ env.GIT_SHORT_HASH }},ghcr.io/toeverything/affine-graphql:${{env.RELEASE_FLAVOR}}
+          tags: rafaeluriarte/affine-graphql:${{env.RELEASE_FLAVOR}}-${{ env.GIT_SHORT_HASH }}

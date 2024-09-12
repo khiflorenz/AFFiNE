@@ -15,7 +15,7 @@ export interface WorkspaceEvents {
 export interface DocEvents {
   updated: Payload<
     Pick<Snapshot, 'id' | 'workspaceId'> & {
-      previous: Pick<Snapshot, 'blob' | 'state' | 'updatedAt'>;
+      previous: Pick<Snapshot, 'blob' | 'state' | 'updatedAt' | 'createdBy'>;
     }
   >;
   deleted: Payload<Pick<Snapshot, 'id' | 'workspaceId'>>;

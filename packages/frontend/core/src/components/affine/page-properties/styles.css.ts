@@ -98,7 +98,7 @@ export const tableHeaderTimestamp = style({
 
 export const tableHeaderDivider = style({
   height: 0,
-  borderTop: `1px solid ${cssVar('borderColor')}`,
+  borderTop: `0.5px solid ${cssVar('borderColor')}`,
   width: '100%',
   margin: '8px 0',
 });
@@ -117,18 +117,20 @@ export const tableBodySortable = style({
 });
 
 export const addPropertyButton = style({
-  display: 'flex',
-  alignItems: 'center',
   alignSelf: 'flex-start',
   fontSize: cssVar('fontSm'),
-  color: `${cssVar('textSecondaryColor')} !important`,
+  color: `${cssVar('textSecondaryColor')}`,
   padding: '0 4px',
   height: 36,
-  cursor: 'pointer',
-  ':hover': {
-    color: cssVar('textPrimaryColor'),
-    backgroundColor: cssVar('hoverColor'),
-  },
+  fontWeight: 400,
+  gap: 6,
+});
+globalStyle(`${addPropertyButton} svg`, {
+  fontSize: 16,
+  color: cssVar('iconSecondary'),
+});
+globalStyle(`${addPropertyButton}:hover svg`, {
+  color: cssVar('iconColor'),
 });
 
 export const collapsedIcon = style({
@@ -262,7 +264,7 @@ export const propertyRowIconContainer = style({
   justifyContent: 'center',
   borderRadius: '2px',
   fontSize: 16,
-  color: 'inherit',
+  color: cssVar('iconSecondary'),
 });
 
 export const propertyRowNameContainer = style({

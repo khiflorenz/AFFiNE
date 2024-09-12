@@ -45,11 +45,10 @@ jobs:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           BUILD_TYPE: ${{ github.event.inputs.flavor }}
-          SHOULD_REPORT_TRACE: true
-          TRACE_REPORT_ENDPOINT: ${{ secrets.TRACE_REPORT_ENDPOINT }}
           CAPTCHA_SITE_KEY: ${{ secrets.CAPTCHA_SITE_KEY }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
           SENTRY_PROJECT: 'affine-web'
+          SENTRY_RELEASE: ${{ steps.version.outputs.APP_VERSION }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
           PERFSEE_TOKEN: ${{ secrets.PERFSEE_TOKEN }}
@@ -79,8 +78,6 @@ jobs:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           BUILD_TYPE: ${{ github.event.inputs.flavor }}
-          SHOULD_REPORT_TRACE: true
-          TRACE_REPORT_ENDPOINT: ${{ secrets.TRACE_REPORT_ENDPOINT }}
           CAPTCHA_SITE_KEY: ${{ secrets.CAPTCHA_SITE_KEY }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
           SENTRY_PROJECT: 'affine-admin'
@@ -125,10 +122,9 @@ jobs:
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
           logout: false
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
@@ -142,9 +138,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           provenance: true
           file: .github/deployment/front/Dockerfile
-          tags: ghcr.io/toeverything/affine-front:${{env.RELEASE_FLAVOR}}-${{ env.GIT_SHORT_HASH }},ghcr.io/toeverything/affine-front:${{env.RELEASE_FLAVOR}}
-
-  deploy:
+          tags: rafaeluriarte/affine-front:${{env.RELEASE_FLAVOR}}-${{ env.GIT_SHORT_HASH }}
     name: Deploy to cluster
     if: ${{ github.event_name == 'workflow_dispatch' }}
     environment: ${{ github.event.inputs.flavor }}

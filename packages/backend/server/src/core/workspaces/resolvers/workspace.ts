@@ -249,6 +249,8 @@ export class WorkspaceResolver {
             workspaceId: workspace.id,
             blob: buffer,
             updatedAt: new Date(),
+            createdBy: user.id,
+            updatedBy: user.id,
           },
         });
       }
@@ -342,7 +344,8 @@ export class WorkspaceResolver {
         // only invite if the user is not already in the workspace
         if (originRecord) return originRecord.id;
       } else {
-        target = await this.users.createAnonymousUser(email, {
+        target = await this.users.createUser({
+          email,
           registered: false,
         });
       }

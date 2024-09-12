@@ -151,7 +151,8 @@ export class CommandsQuickSearchSession
       keys: [{ name: 'label.title', weight: 2 }, 'label.subTitle'],
       includeMatches: true,
       includeScore: true,
-      threshold: 0.4,
+      ignoreLocation: true,
+      threshold: 0.0,
     });
 
     const result = query
@@ -184,12 +185,12 @@ export class CommandsQuickSearchSession
                 titleMatches ?? []
               ) ?? item.label.title,
             subTitle: item.label.subTitle
-              ? highlighter(
+              ? (highlighter(
                   item.label.subTitle,
                   '<b>',
                   '</b>',
                   subTitleMatches ?? []
-                ) ?? item.label.subTitle
+                ) ?? item.label.subTitle)
               : undefined,
           },
           group: categories[item.category],

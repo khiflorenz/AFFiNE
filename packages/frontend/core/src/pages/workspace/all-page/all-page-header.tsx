@@ -7,7 +7,8 @@ import {
 import { Header } from '@affine/core/components/pure/header';
 import { WorkspaceModeFilterTab } from '@affine/core/components/pure/workspace-mode-filter-tab';
 import { useAsyncCallback } from '@affine/core/hooks/affine-async-hooks';
-import { mixpanel } from '@affine/core/utils';
+import { track } from '@affine/core/mixpanel';
+import { isNewTabTrigger } from '@affine/core/utils';
 import type { Filter } from '@affine/env/filter';
 import { PlusIcon } from '@blocksuite/icons/rc';
 import { useService, WorkspaceService } from '@toeverything/infra';
@@ -32,21 +33,12 @@ export const AllPageHeader = ({
   const onImportFile = useAsyncCallback(async () => {
     const options = await importFile();
     if (options.isWorkspaceFile) {
-      mixpanel.track('WorkspaceCreated', {
-        page: 'doc library',
-        segment: 'all page',
-        module: 'doc list header',
-        control: 'import button',
-        type: 'imported workspace',
+      track.allDocs.header.actions.createWorkspace({
+        control: 'import',
       });
     } else {
-      mixpanel.track('DocCreated', {
-        page: 'doc library',
-        segment: 'all page',
-        module: 'doc list header',
-        control: 'import button',
-        type: 'imported doc',
-        // category
+      track.allDocs.header.actions.createDoc({
+        control: 'import',
       });
     }
   }, [importFile]);
@@ -68,8 +60,12 @@ export const AllPageHeader = ({
               styles.headerCreateNewButton,
               !showCreateNew && styles.headerCreateNewButtonHidden
             )}
-            onCreateEdgeless={createEdgeless}
-            onCreatePage={createPage}
+            onCreateEdgeless={e =>
+              createEdgeless(isNewTabTrigger(e) ? 'new-tab' : true)
+            }
+            onCreatePage={e =>
+              createPage(isNewTabTrigger(e) ? 'new-tab' : true)
+            }
             onImportFile={onImportFile}
           >
             <PlusIcon />

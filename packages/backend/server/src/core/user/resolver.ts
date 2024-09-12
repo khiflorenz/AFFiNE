@@ -13,8 +13,7 @@ import GraphQLUpload from 'graphql-upload/GraphQLUpload.mjs';
 import { isNil, omitBy } from 'lodash-es';
 
 import {
-  Config,
-  CryptoHelper,
+  CannotDeleteOwnAccount,
   type FileUpload,
   Throttle,
   UserNotFound,
@@ -28,6 +27,7 @@ import { validators } from '../utils/validators';
 import { UserService } from './service';
 import {
   DeleteAccount,
+  ManageUserInput,
   RemoveAvatar,
   UpdateUserInput,
   UserOrLimitedUser,
@@ -167,9 +167,6 @@ class CreateUserInput {
 
   @Field(() => String, { nullable: true })
   name!: string | null;
-
-  @Field(() => String, { nullable: true })
-  password!: string | null;
 }
 
 @Admin()
@@ -177,10 +174,15 @@ class CreateUserInput {
 export class UserManagementResolver {
   constructor(
     private readonly db: PrismaClient,
-    private readonly user: UserService,
-    private readonly crypto: CryptoHelper,
-    private readonly config: Config
+    private readonly user: UserService
   ) {}
+
+  @Query(() => Int, {
+    description: 'Get users count',
+  })
+  async usersCount(): Promise<number> {
+    return this.db.user.count();
+  }
 
   @Query(() => [UserType], {
     description: 'List registered users',
@@ -216,28 +218,34 @@ export class UserManagementResolver {
     return sessionUser(user);
   }
 
+  @Query(() => UserType, {
+    name: 'userByEmail',
+    description: 'Get user by email for admin',
+    nullable: true,
+  })
+  async getUserByEmail(@Args('email') email: string) {
+    const user = await this.db.user.findUnique({
+      select: { ...this.user.defaultUserSelect, password: true },
+      where: {
+        email,
+      },
+    });
+
+    if (!user) {
+      return null;
+    }
+
+    return sessionUser(user);
+  }
+
   @Mutation(() => UserType, {
     description: 'Create a new user',
   })
   async createUser(
     @Args({ name: 'input', type: () => CreateUserInput }) input: CreateUserInput
   ) {
-    validators.assertValidEmail(input.email);
-    if (input.password) {
-      const config = await this.config.runtime.fetchAll({
-        'auth/password.max': true,
-        'auth/password.min': true,
-      });
-      validators.assertValidPassword(input.password, {
-        max: config['auth/password.max'],
-        min: config['auth/password.min'],
-      });
-    }
-
-    const { id } = await this.user.createAnonymousUser(input.email, {
-      password: input.password
-        ? await this.crypto.encryptPassword(input.password)
-        : undefined,
+    const { id } = await this.user.createUser({
+      email: input.email,
       registered: true,
     });
 
@@ -248,8 +256,42 @@ export class UserManagementResolver {
   @Mutation(() => DeleteAccount, {
     description: 'Delete a user account',
   })
-  async deleteUser(@Args('id') id: string): Promise<DeleteAccount> {
+  async deleteUser(
+    @CurrentUser() user: CurrentUser,
+    @Args('id') id: string
+  ): Promise<DeleteAccount> {
+    if (user.id === id) {
+      throw new CannotDeleteOwnAccount();
+    }
     await this.user.deleteUser(id);
     return { success: true };
+  }
+
+  @Mutation(() => UserType, {
+    description: 'Update a user',
+  })
+  async updateUser(
+    @Args('id') id: string,
+    @Args('input') input: ManageUserInput
+  ): Promise<UserType> {
+    const user = await this.db.user.findUnique({
+      where: { id },
+    });
+
+    if (!user) {
+      throw new UserNotFound();
+    }
+
+    input = omitBy(input, isNil);
+    if (Object.keys(input).length === 0) {
+      return sessionUser(user);
+    }
+
+    return sessionUser(
+      await this.user.updateUser(user.id, {
+        email: input.email,
+        name: input.name,
+      })
+    );
   }
 }

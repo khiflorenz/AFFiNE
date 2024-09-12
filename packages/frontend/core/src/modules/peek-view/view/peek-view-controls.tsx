@@ -1,10 +1,10 @@
-import { IconButton, Tooltip } from '@affine/component';
+import { IconButton } from '@affine/component';
 import { useNavigateHelper } from '@affine/core/hooks/use-navigate-helper';
 import { useI18n } from '@affine/i18n';
 import {
   CloseIcon,
-  DualLinkIcon,
   ExpandFullIcon,
+  OpenInNewIcon,
   SplitViewIcon,
 } from '@blocksuite/icons/rc';
 import { type DocMode, useService } from '@toeverything/infra';
@@ -45,18 +45,16 @@ export const ControlButton = ({
   );
 
   return (
-    <Tooltip content={name}>
-      <IconButton
-        data-testid="peek-view-control"
-        data-action-name={nameKey}
-        size="large"
-        type="default"
-        onClick={handleClick}
-        icon={icon}
-        className={styles.button}
-        withoutHoverStyle
-      />
-    </Tooltip>
+    <IconButton
+      variant="solid"
+      tooltip={name}
+      data-testid="peek-view-control"
+      data-action-name={nameKey}
+      size="20"
+      onClick={handleClick}
+      icon={icon}
+      className={styles.button}
+    />
   );
 };
 
@@ -78,7 +76,7 @@ export const DefaultPeekViewControls = ({
         icon: <CloseIcon />,
         nameKey: 'close',
         name: t['com.affine.peek-view-controls.close'](),
-        onClick: peekView.close,
+        onClick: () => peekView.close(),
       },
     ].filter((opt): opt is ControlButtonProps => Boolean(opt));
   }, [peekView, t]);
@@ -109,7 +107,7 @@ export const DocPeekViewControls = ({
         icon: <CloseIcon />,
         nameKey: 'close',
         name: t['com.affine.peek-view-controls.close'](),
-        onClick: peekView.close,
+        onClick: () => peekView.close(),
       },
       {
         icon: <ExpandFullIcon />,
@@ -123,7 +121,16 @@ export const DocPeekViewControls = ({
           if (mode) {
             doc?.setMode(mode);
           }
-          peekView.close();
+          peekView.close('none');
+        },
+      },
+      {
+        icon: <OpenInNewIcon />,
+        nameKey: 'new-tab',
+        name: t['com.affine.peek-view-controls.open-doc-in-new-tab'](),
+        onClick: () => {
+          workbench.openDoc(docId, { at: 'new-tab' });
+          peekView.close('none');
         },
       },
       environment.isDesktop && {
@@ -132,19 +139,7 @@ export const DocPeekViewControls = ({
         name: t['com.affine.peek-view-controls.open-doc-in-split-view'](),
         onClick: () => {
           workbench.openDoc(docId, { at: 'beside' });
-          peekView.close();
-        },
-      },
-      !environment.isDesktop && {
-        icon: <DualLinkIcon />,
-        nameKey: 'new-tab',
-        name: t['com.affine.peek-view-controls.open-doc-in-new-tab'](),
-        onClick: () => {
-          window.open(
-            `/workspace/${workspace.id}/${docId}#${blockId ?? ''}`,
-            '_blank'
-          );
-          peekView.close();
+          peekView.close('none');
         },
       },
     ].filter((opt): opt is ControlButtonProps => Boolean(opt));

@@ -1,6 +1,14 @@
 import { cssVar } from '@toeverything/theme';
 import { createVar, keyframes, style } from '@vanilla-extract/css';
 
+export const toolStyle = style({
+  selectors: {
+    '&.hide': {
+      pointerEvents: 'none',
+    },
+  },
+});
+
 export const aiIslandWrapper = style({
   width: 44,
   height: 44,
@@ -51,14 +59,8 @@ const brightGreen = createVar('bright-green');
 const brightRed = createVar('bright-red');
 const borderWidth = createVar('border-width');
 
-const rotateBg1 = keyframes({
-  to: { [borderAngle1.slice(4, -1)]: '360deg' },
-});
-const rotateBg2 = keyframes({
-  to: { [borderAngle2.slice(4, -1)]: '450deg' },
-});
-const rotateBg3 = keyframes({
-  to: { [borderAngle3.slice(4, -1)]: '540deg' },
+const rotateBg = keyframes({
+  to: { transform: 'rotate(360deg)' },
 });
 
 export const aiIslandAnimationBg = style({
@@ -68,6 +70,7 @@ export const aiIslandAnimationBg = style({
   left: 0,
   position: 'absolute',
   borderRadius: '50%',
+  overflow: 'hidden',
 
   vars: {
     [borderAngle1]: '0deg',
@@ -79,21 +82,6 @@ export const aiIslandAnimationBg = style({
     [borderWidth]: '1.5px',
   },
   backgroundColor: 'transparent',
-  backgroundImage: `conic-gradient(from ${borderAngle1} at 50% 50%,
-      transparent,
-      ${brightBlue} 10%,
-      transparent 30%,
-      transparent),
-    conic-gradient(from ${borderAngle2} at 50% 50%,
-      transparent,
-      ${brightGreen} 10%,
-      transparent 60%,
-      transparent),
-    conic-gradient(from ${borderAngle3} at 50% 50%,
-      transparent,
-      ${brightRed} 10%,
-      transparent 50%,
-      transparent)`,
 
   selectors: {
     [`${aiIslandWrapper}[data-animation="true"] &`]: {
@@ -101,7 +89,44 @@ export const aiIslandAnimationBg = style({
       height: `calc(100% + 2 * ${borderWidth})`,
       top: `calc(-1 * ${borderWidth})`,
       left: `calc(-1 * ${borderWidth})`,
-      animation: `${rotateBg1} 3s linear infinite, ${rotateBg2} 8s linear infinite, ${rotateBg3} 13s linear infinite`,
+    },
+  },
+});
+
+export const gradient = style({
+  position: 'absolute',
+  width: '100%',
+  height: '100%',
+  borderRadius: 'inherit',
+  animationName: rotateBg,
+  animationIterationCount: 'infinite',
+  animationTimingFunction: 'linear',
+  pointerEvents: 'none',
+  willChange: 'transform',
+  selectors: {
+    [`&:nth-of-type(1)`]: {
+      animationDuration: '3s',
+      backgroundImage: `conic-gradient(from ${borderAngle1} at 50% 50%, 
+        transparent, ${brightBlue} 10%, 
+        transparent 30%, 
+        transparent
+      )`,
+    },
+    [`&:nth-of-type(2)`]: {
+      animationDuration: '8s',
+      backgroundImage: `conic-gradient(from ${borderAngle2} at 50% 50%,
+        transparent, ${brightGreen} 10%,
+        transparent 60%,
+        transparent
+      )`,
+    },
+    [`&:nth-of-type(3)`]: {
+      animationDuration: '13s',
+      backgroundImage: `conic-gradient(from ${borderAngle3} at 50% 50%,
+        transparent, ${brightRed} 10%,
+        transparent 50%,
+        transparent
+      )`,
     },
   },
 });

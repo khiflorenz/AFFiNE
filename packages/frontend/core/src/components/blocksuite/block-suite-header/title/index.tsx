@@ -5,6 +5,7 @@ import {
   useDocMetaHelper,
 } from '@affine/core/hooks/use-block-suite-page-meta';
 import type { DocCollection } from '@affine/core/shared';
+import clsx from 'clsx';
 import type { HTMLAttributes } from 'react';
 import { useCallback } from 'react';
 
@@ -16,13 +17,15 @@ export interface BlockSuiteHeaderTitleProps {
   /** if set, title cannot be edited */
   isPublic?: boolean;
   inputHandleRef?: InlineEditProps['handleRef'];
+  className?: string;
+  onEditSave?: () => void;
 }
 
 const inputAttrs = {
   'data-testid': 'title-content',
 } as HTMLAttributes<HTMLInputElement>;
 export const BlocksuiteHeaderTitle = (props: BlockSuiteHeaderTitleProps) => {
-  const { docCollection, pageId, isPublic, inputHandleRef } = props;
+  const { docCollection, pageId, isPublic, inputHandleRef, onEditSave } = props;
   const currentPage = docCollection.getDoc(pageId);
   const pageMeta = useBlockSuiteDocMeta(docCollection).find(
     meta => meta.id === currentPage?.id
@@ -32,14 +35,15 @@ export const BlocksuiteHeaderTitle = (props: BlockSuiteHeaderTitleProps) => {
 
   const onChange = useCallback(
     (v: string) => {
+      onEditSave?.();
       setDocTitle(currentPage?.id || '', v);
     },
-    [currentPage?.id, setDocTitle]
+    [currentPage?.id, onEditSave, setDocTitle]
   );
 
   return (
     <InlineEdit
-      className={styles.title}
+      className={clsx(styles.title, props.className)}
       autoSelect
       value={title}
       onChange={onChange}

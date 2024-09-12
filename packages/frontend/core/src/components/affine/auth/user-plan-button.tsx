@@ -1,10 +1,10 @@
 import { Tooltip } from '@affine/component/ui/tooltip';
-import { mixpanel } from '@affine/core/utils';
+import { useCatchEventCallback } from '@affine/core/hooks/use-catch-event-hook';
 import { SubscriptionPlan } from '@affine/graphql';
 import { useI18n } from '@affine/i18n';
 import { useLiveData, useServices } from '@toeverything/infra';
 import { useSetAtom } from 'jotai';
-import { useCallback, useEffect } from 'react';
+import { useEffect } from 'react';
 
 import { openSettingModalAtom } from '../../../atoms';
 import {
@@ -36,21 +36,13 @@ export const UserPlanButton = () => {
   }, [subscriptionService]);
 
   const setSettingModalAtom = useSetAtom(openSettingModalAtom);
-  const handleClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      e.stopPropagation();
-      setSettingModalAtom({
-        open: true,
-        activeTab: 'plans',
-        scrollAnchor: 'cloudPricingPlan',
-      });
-      mixpanel.track('PlansViewed', {
-        segment: 'settings panel',
-        module: 'profile and badge',
-      });
-    },
-    [setSettingModalAtom]
-  );
+  const handleClick = useCatchEventCallback(() => {
+    setSettingModalAtom({
+      open: true,
+      activeTab: 'plans',
+      scrollAnchor: 'cloudPricingPlan',
+    });
+  }, [setSettingModalAtom]);
 
   const t = useI18n();
 
@@ -64,7 +56,7 @@ export const UserPlanButton = () => {
     return;
   }
 
-  const planLabel = isBeliever ? 'Believer' : plan ?? SubscriptionPlan.Free;
+  const planLabel = isBeliever ? 'Believer' : (plan ?? SubscriptionPlan.Free);
 
   return (
     <Tooltip content={t['com.affine.payment.tag-tooltips']()} side="top">
@@ -72,6 +64,7 @@ export const UserPlanButton = () => {
         data-is-believer={isBeliever ? 'true' : undefined}
         className={styles.userPlanButton}
         onClick={handleClick}
+        data-event-props="$.settingsPanel.profileAndBadge.viewPlans"
       >
         {planLabel}
       </div>

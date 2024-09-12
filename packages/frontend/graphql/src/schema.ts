@@ -44,6 +44,11 @@ export interface BlobNotFoundDataType {
   workspaceId: Scalars['String']['output'];
 }
 
+export enum ChatHistoryOrder {
+  asc = 'asc',
+  desc = 'desc',
+}
+
 export interface ChatMessage {
   __typename?: 'ChatMessage';
   attachments: Maybe<Array<Scalars['String']['output']>>;
@@ -90,14 +95,29 @@ export interface CopilotMessageNotFoundDataType {
 export enum CopilotModels {
   DallE3 = 'DallE3',
   Gpt4Omni = 'Gpt4Omni',
-  Gpt4TurboPreview = 'Gpt4TurboPreview',
-  Gpt4VisionPreview = 'Gpt4VisionPreview',
-  Gpt35Turbo = 'Gpt35Turbo',
+  Gpt4OmniMini = 'Gpt4OmniMini',
   TextEmbedding3Large = 'TextEmbedding3Large',
   TextEmbedding3Small = 'TextEmbedding3Small',
   TextEmbeddingAda002 = 'TextEmbeddingAda002',
   TextModerationLatest = 'TextModerationLatest',
   TextModerationStable = 'TextModerationStable',
+}
+
+export interface CopilotPromptConfigInput {
+  frequencyPenalty: InputMaybe<Scalars['Float']['input']>;
+  jsonMode: InputMaybe<Scalars['Boolean']['input']>;
+  presencePenalty: InputMaybe<Scalars['Float']['input']>;
+  temperature: InputMaybe<Scalars['Float']['input']>;
+  topP: InputMaybe<Scalars['Float']['input']>;
+}
+
+export interface CopilotPromptConfigType {
+  __typename?: 'CopilotPromptConfigType';
+  frequencyPenalty: Maybe<Scalars['Float']['output']>;
+  jsonMode: Maybe<Scalars['Boolean']['output']>;
+  presencePenalty: Maybe<Scalars['Float']['output']>;
+  temperature: Maybe<Scalars['Float']['output']>;
+  topP: Maybe<Scalars['Float']['output']>;
 }
 
 export interface CopilotPromptMessageInput {
@@ -127,8 +147,9 @@ export interface CopilotPromptNotFoundDataType {
 export interface CopilotPromptType {
   __typename?: 'CopilotPromptType';
   action: Maybe<Scalars['String']['output']>;
+  config: Maybe<CopilotPromptConfigType>;
   messages: Array<CopilotPromptMessageType>;
-  model: CopilotModels;
+  model: Scalars['String']['output'];
   name: Scalars['String']['output'];
 }
 
@@ -170,6 +191,7 @@ export interface CreateCheckoutSessionInput {
 
 export interface CreateCopilotPromptInput {
   action: InputMaybe<Scalars['String']['input']>;
+  config: InputMaybe<CopilotPromptConfigInput>;
   messages: Array<CopilotPromptMessageInput>;
   model: CopilotModels;
   name: Scalars['String']['input'];
@@ -178,7 +200,6 @@ export interface CreateCopilotPromptInput {
 export interface CreateUserInput {
   email: Scalars['String']['input'];
   name: InputMaybe<Scalars['String']['input']>;
-  password: InputMaybe<Scalars['String']['input']>;
 }
 
 export interface CredentialsRequirementType {
@@ -223,11 +244,6 @@ export interface DocNotFoundDataType {
   workspaceId: Scalars['String']['output'];
 }
 
-export enum EarlyAccessType {
-  AI = 'AI',
-  App = 'App',
-}
-
 export type ErrorDataUnion =
   | BlobNotFoundDataType
   | CopilotMessageNotFoundDataType
@@ -258,6 +274,8 @@ export enum ErrorNames {
   AUTHENTICATION_REQUIRED = 'AUTHENTICATION_REQUIRED',
   BLOB_NOT_FOUND = 'BLOB_NOT_FOUND',
   BLOB_QUOTA_EXCEEDED = 'BLOB_QUOTA_EXCEEDED',
+  CANNOT_DELETE_ALL_ADMIN_ACCOUNT = 'CANNOT_DELETE_ALL_ADMIN_ACCOUNT',
+  CANNOT_DELETE_OWN_ACCOUNT = 'CANNOT_DELETE_OWN_ACCOUNT',
   CANT_CHANGE_WORKSPACE_OWNER = 'CANT_CHANGE_WORKSPACE_OWNER',
   CANT_UPDATE_LIFETIME_SUBSCRIPTION = 'CANT_UPDATE_LIFETIME_SUBSCRIPTION',
   COPILOT_ACTION_TAKEN = 'COPILOT_ACTION_TAKEN',
@@ -288,6 +306,7 @@ export enum ErrorNames {
   INVALID_OAUTH_CALLBACK_STATE = 'INVALID_OAUTH_CALLBACK_STATE',
   INVALID_PASSWORD_LENGTH = 'INVALID_PASSWORD_LENGTH',
   INVALID_RUNTIME_CONFIG_TYPE = 'INVALID_RUNTIME_CONFIG_TYPE',
+  LINK_EXPIRED = 'LINK_EXPIRED',
   MAILER_SERVICE_IS_NOT_CONFIGURED = 'MAILER_SERVICE_IS_NOT_CONFIGURED',
   MEMBER_QUOTA_EXCEEDED = 'MEMBER_QUOTA_EXCEEDED',
   MISSING_OAUTH_QUERY_PARAMETER = 'MISSING_OAUTH_QUERY_PARAMETER',
@@ -296,6 +315,7 @@ export enum ErrorNames {
   OAUTH_ACCOUNT_ALREADY_CONNECTED = 'OAUTH_ACCOUNT_ALREADY_CONNECTED',
   OAUTH_STATE_EXPIRED = 'OAUTH_STATE_EXPIRED',
   PAGE_IS_NOT_PUBLIC = 'PAGE_IS_NOT_PUBLIC',
+  PASSWORD_REQUIRED = 'PASSWORD_REQUIRED',
   RUNTIME_CONFIG_NOT_FOUND = 'RUNTIME_CONFIG_NOT_FOUND',
   SAME_EMAIL_PROVIDED = 'SAME_EMAIL_PROVIDED',
   SAME_SUBSCRIPTION_RECURRING = 'SAME_SUBSCRIPTION_RECURRING',
@@ -430,6 +450,13 @@ export interface ListUserInput {
   skip: InputMaybe<Scalars['Int']['input']>;
 }
 
+export interface ManageUserInput {
+  /** User email */
+  email: InputMaybe<Scalars['String']['input']>;
+  /** User name */
+  name: InputMaybe<Scalars['String']['input']>;
+}
+
 export interface MissingOauthQueryParameterDataType {
   __typename?: 'MissingOauthQueryParameterDataType';
   name: Scalars['String']['output'];
@@ -438,14 +465,14 @@ export interface MissingOauthQueryParameterDataType {
 export interface Mutation {
   __typename?: 'Mutation';
   acceptInviteById: Scalars['Boolean']['output'];
-  addAdminister: Scalars['Boolean']['output'];
-  addToEarlyAccess: Scalars['Int']['output'];
   addWorkspaceFeature: Scalars['Int']['output'];
   cancelSubscription: UserSubscription;
   changeEmail: UserType;
-  changePassword: UserType;
+  changePassword: Scalars['Boolean']['output'];
   /** Cleanup sessions */
   cleanupCopilotSession: Array<Scalars['String']['output']>;
+  /** Create change password url */
+  createChangePasswordUrl: Scalars['String']['output'];
   /** Create a subscription checkout link of stripe */
   createCheckoutSession: Scalars['String']['output'];
   /** Create a chat message */
@@ -473,7 +500,6 @@ export interface Mutation {
   recoverDoc: Scalars['DateTime']['output'];
   /** Remove user avatar */
   removeAvatar: RemoveAvatar;
-  removeEarlyAccess: Scalars['Int']['output'];
   removeWorkspaceFeature: Scalars['Int']['output'];
   resumeSubscription: UserSubscription;
   revoke: Scalars['Boolean']['output'];
@@ -497,6 +523,10 @@ export interface Mutation {
   /** update multiple server runtime configurable settings */
   updateRuntimeConfigs: Array<ServerRuntimeConfigType>;
   updateSubscriptionRecurring: UserSubscription;
+  /** Update a user */
+  updateUser: UserType;
+  /** update user enabled feature */
+  updateUserFeatures: Array<FeatureType>;
   /** Update workspace */
   updateWorkspace: WorkspaceType;
   /** Upload user avatar */
@@ -508,15 +538,6 @@ export interface MutationAcceptInviteByIdArgs {
   inviteId: Scalars['String']['input'];
   sendAcceptMail: InputMaybe<Scalars['Boolean']['input']>;
   workspaceId: Scalars['String']['input'];
-}
-
-export interface MutationAddAdministerArgs {
-  email: Scalars['String']['input'];
-}
-
-export interface MutationAddToEarlyAccessArgs {
-  email: Scalars['String']['input'];
-  type: EarlyAccessType;
 }
 
 export interface MutationAddWorkspaceFeatureArgs {
@@ -537,10 +558,16 @@ export interface MutationChangeEmailArgs {
 export interface MutationChangePasswordArgs {
   newPassword: Scalars['String']['input'];
   token: Scalars['String']['input'];
+  userId: InputMaybe<Scalars['String']['input']>;
 }
 
 export interface MutationCleanupCopilotSessionArgs {
   options: DeleteSessionInput;
+}
+
+export interface MutationCreateChangePasswordUrlArgs {
+  callbackUrl: Scalars['String']['input'];
+  userId: Scalars['String']['input'];
 }
 
 export interface MutationCreateCheckoutSessionArgs {
@@ -607,10 +634,6 @@ export interface MutationRecoverDocArgs {
   guid: Scalars['String']['input'];
   timestamp: Scalars['DateTime']['input'];
   workspaceId: Scalars['String']['input'];
-}
-
-export interface MutationRemoveEarlyAccessArgs {
-  email: Scalars['String']['input'];
 }
 
 export interface MutationRemoveWorkspaceFeatureArgs {
@@ -703,6 +726,16 @@ export interface MutationUpdateSubscriptionRecurringArgs {
   recurring: SubscriptionRecurring;
 }
 
+export interface MutationUpdateUserArgs {
+  id: Scalars['String']['input'];
+  input: ManageUserInput;
+}
+
+export interface MutationUpdateUserFeaturesArgs {
+  features: Array<FeatureType>;
+  id: Scalars['String']['input'];
+}
+
 export interface MutationUpdateWorkspaceArgs {
   input: UpdateWorkspaceInput;
 }
@@ -754,7 +787,6 @@ export interface Query {
   collectAllBlobSizes: WorkspaceBlobSizes;
   /** Get current user */
   currentUser: Maybe<UserType>;
-  earlyAccessUsers: Array<UserType>;
   error: ErrorDataUnion;
   /** send workspace invitation */
   getInviteInfo: InvitationType;
@@ -773,12 +805,17 @@ export interface Query {
   serverConfig: ServerConfigType;
   /** get all server runtime configurable settings */
   serverRuntimeConfig: Array<ServerRuntimeConfigType>;
+  serverServiceConfigs: Array<ServerServiceConfig>;
   /** Get user by email */
   user: Maybe<UserOrLimitedUser>;
+  /** Get user by email for admin */
+  userByEmail: Maybe<UserType>;
   /** Get user by id */
   userById: UserType;
   /** List registered users */
   users: Array<UserType>;
+  /** Get users count */
+  usersCount: Scalars['Int']['output'];
   /** Get workspace by id */
   workspace: WorkspaceType;
   /** Get all accessible workspaces for current user */
@@ -814,6 +851,10 @@ export interface QueryUserArgs {
   email: Scalars['String']['input'];
 }
 
+export interface QueryUserByEmailArgs {
+  email: Scalars['String']['input'];
+}
+
 export interface QueryUserByIdArgs {
   id: Scalars['String']['input'];
 }
@@ -828,8 +869,11 @@ export interface QueryWorkspaceArgs {
 
 export interface QueryChatHistoriesInput {
   action: InputMaybe<Scalars['Boolean']['input']>;
+  fork: InputMaybe<Scalars['Boolean']['input']>;
   limit: InputMaybe<Scalars['Int']['input']>;
+  messageOrder: InputMaybe<ChatHistoryOrder>;
   sessionId: InputMaybe<Scalars['String']['input']>;
+  sessionOrder: InputMaybe<ChatHistoryOrder>;
   skip: InputMaybe<Scalars['Int']['input']>;
 }
 
@@ -870,6 +914,8 @@ export interface SameSubscriptionRecurringDataType {
 
 export interface ServerConfigType {
   __typename?: 'ServerConfigType';
+  /** Features for user that can be configured */
+  availableUserFeatures: Array<FeatureType>;
   /** server base url */
   baseUrl: Scalars['String']['output'];
   /** credentials requirement */
@@ -885,6 +931,8 @@ export interface ServerConfigType {
    * @deprecated use `features`
    */
   flavor: Scalars['String']['output'];
+  /** whether server has been initialized */
+  initialized: Scalars['Boolean']['output'];
   /** server identical name could be shown as badge on user interface */
   name: Scalars['String']['output'];
   oauthProviders: Array<OAuthProviderType>;
@@ -920,6 +968,12 @@ export interface ServerRuntimeConfigType {
   type: RuntimeConfigType;
   updatedAt: Scalars['DateTime']['output'];
   value: Scalars['JSON']['output'];
+}
+
+export interface ServerServiceConfig {
+  __typename?: 'ServerServiceConfig';
+  config: Scalars['JSONObject']['output'];
+  name: Scalars['String']['output'];
 }
 
 export interface SubscriptionAlreadyExistsDataType {
@@ -1184,6 +1238,30 @@ export interface TokenType {
   token: Scalars['String']['output'];
 }
 
+export type AdminServerConfigQueryVariables = Exact<{ [key: string]: never }>;
+
+export type AdminServerConfigQuery = {
+  __typename?: 'Query';
+  serverConfig: {
+    __typename?: 'ServerConfigType';
+    version: string;
+    baseUrl: string;
+    name: string;
+    features: Array<ServerFeature>;
+    type: ServerDeploymentType;
+    initialized: boolean;
+    availableUserFeatures: Array<FeatureType>;
+    credentialsRequirement: {
+      __typename?: 'CredentialsRequirementType';
+      password: {
+        __typename?: 'PasswordLimitsType';
+        minLength: number;
+        maxLength: number;
+      };
+    };
+  };
+};
+
 export type DeleteBlobMutationVariables = Exact<{
   workspaceId: Scalars['String']['input'];
   hash: Scalars['String']['input'];
@@ -1233,14 +1311,25 @@ export type ChangeEmailMutation = {
   changeEmail: { __typename?: 'UserType'; id: string; email: string };
 };
 
+export type CreateChangePasswordUrlMutationVariables = Exact<{
+  callbackUrl: Scalars['String']['input'];
+  userId: Scalars['String']['input'];
+}>;
+
+export type CreateChangePasswordUrlMutation = {
+  __typename?: 'Mutation';
+  createChangePasswordUrl: string;
+};
+
 export type ChangePasswordMutationVariables = Exact<{
   token: Scalars['String']['input'];
+  userId: Scalars['String']['input'];
   newPassword: Scalars['String']['input'];
 }>;
 
 export type ChangePasswordMutation = {
   __typename?: 'Mutation';
-  changePassword: { __typename?: 'UserType'; id: string };
+  changePassword: boolean;
 };
 
 export type CopilotQuotaQueryVariables = Exact<{ [key: string]: never }>;
@@ -1305,6 +1394,15 @@ export type CreateCustomerPortalMutation = {
   createCustomerPortal: string;
 };
 
+export type CreateUserMutationVariables = Exact<{
+  input: CreateUserInput;
+}>;
+
+export type CreateUserMutation = {
+  __typename?: 'Mutation';
+  createUser: { __typename?: 'UserType'; id: string };
+};
+
 export type CreateWorkspaceMutationVariables = Exact<{ [key: string]: never }>;
 
 export type CreateWorkspaceMutation = {
@@ -1324,6 +1422,15 @@ export type DeleteAccountMutation = {
   deleteAccount: { __typename?: 'DeleteAccount'; success: boolean };
 };
 
+export type DeleteUserMutationVariables = Exact<{
+  id: Scalars['String']['input'];
+}>;
+
+export type DeleteUserMutation = {
+  __typename?: 'Mutation';
+  deleteUser: { __typename?: 'DeleteAccount'; success: boolean };
+};
+
 export type DeleteWorkspaceMutationVariables = Exact<{
   id: Scalars['String']['input'];
 }>;
@@ -1331,37 +1438,6 @@ export type DeleteWorkspaceMutationVariables = Exact<{
 export type DeleteWorkspaceMutation = {
   __typename?: 'Mutation';
   deleteWorkspace: boolean;
-};
-
-export type EarlyAccessUsersQueryVariables = Exact<{ [key: string]: never }>;
-
-export type EarlyAccessUsersQuery = {
-  __typename?: 'Query';
-  earlyAccessUsers: Array<{
-    __typename?: 'UserType';
-    id: string;
-    name: string;
-    email: string;
-    avatarUrl: string | null;
-    emailVerified: boolean;
-    subscription: {
-      __typename?: 'UserSubscription';
-      plan: SubscriptionPlan;
-      recurring: SubscriptionRecurring;
-      status: SubscriptionStatus;
-      start: string;
-      end: string | null;
-    } | null;
-  }>;
-};
-
-export type RemoveEarlyAccessMutationVariables = Exact<{
-  email: Scalars['String']['input'];
-}>;
-
-export type RemoveEarlyAccessMutation = {
-  __typename?: 'Mutation';
-  removeEarlyAccess: number;
 };
 
 export type ForkCopilotSessionMutationVariables = Exact<{
@@ -1412,6 +1488,32 @@ export type GetCopilotHistoriesQuery = {
           role: string;
           content: string;
           attachments: Array<string> | null;
+          createdAt: string;
+        }>;
+      }>;
+    };
+  } | null;
+};
+
+export type GetCopilotHistoryIdsQueryVariables = Exact<{
+  workspaceId: Scalars['String']['input'];
+  docId: InputMaybe<Scalars['String']['input']>;
+  options: InputMaybe<QueryChatHistoriesInput>;
+}>;
+
+export type GetCopilotHistoryIdsQuery = {
+  __typename?: 'Query';
+  currentUser: {
+    __typename?: 'UserType';
+    copilot: {
+      __typename?: 'Copilot';
+      histories: Array<{
+        __typename?: 'CopilotHistories';
+        sessionId: string;
+        messages: Array<{
+          __typename?: 'ChatMessage';
+          id: string | null;
+          role: string;
           createdAt: string;
         }>;
       }>;
@@ -1540,6 +1642,32 @@ export type OauthProvidersQuery = {
   };
 };
 
+export type GetPromptsQueryVariables = Exact<{ [key: string]: never }>;
+
+export type GetPromptsQuery = {
+  __typename?: 'Query';
+  listCopilotPrompts: Array<{
+    __typename?: 'CopilotPromptType';
+    name: string;
+    model: string;
+    action: string | null;
+    config: {
+      __typename?: 'CopilotPromptConfigType';
+      jsonMode: boolean | null;
+      frequencyPenalty: number | null;
+      presencePenalty: number | null;
+      temperature: number | null;
+      topP: number | null;
+    } | null;
+    messages: Array<{
+      __typename?: 'CopilotPromptMessageType';
+      role: CopilotPromptMessageRole;
+      content: string;
+      params: Record<string, string> | null;
+    }>;
+  }>;
+};
+
 export type GetServerRuntimeConfigQueryVariables = Exact<{
   [key: string]: never;
 }>;
@@ -1556,6 +1684,48 @@ export type GetServerRuntimeConfigQuery = {
     type: RuntimeConfigType;
     updatedAt: string;
   }>;
+};
+
+export type GetServerServiceConfigsQueryVariables = Exact<{
+  [key: string]: never;
+}>;
+
+export type GetServerServiceConfigsQuery = {
+  __typename?: 'Query';
+  serverServiceConfigs: Array<{
+    __typename?: 'ServerServiceConfig';
+    name: string;
+    config: any;
+  }>;
+};
+
+export type GetUserByEmailQueryVariables = Exact<{
+  email: Scalars['String']['input'];
+}>;
+
+export type GetUserByEmailQuery = {
+  __typename?: 'Query';
+  userByEmail: {
+    __typename?: 'UserType';
+    id: string;
+    name: string;
+    email: string;
+    features: Array<FeatureType>;
+    hasPassword: boolean | null;
+    emailVerified: boolean;
+    avatarUrl: string | null;
+    quota: {
+      __typename?: 'UserQuota';
+      humanReadable: {
+        __typename?: 'UserQuotaHumanReadable';
+        blobLimit: string;
+        historyPeriod: string;
+        memberLimit: string;
+        name: string;
+        storageQuota: string;
+      };
+    } | null;
+  } | null;
 };
 
 export type GetUserFeaturesQueryVariables = Exact<{ [key: string]: never }>;
@@ -1591,6 +1761,10 @@ export type GetUserQuery = {
       }
     | null;
 };
+
+export type GetUsersCountQueryVariables = Exact<{ [key: string]: never }>;
+
+export type GetUsersCountQuery = { __typename?: 'Query'; usersCount: number };
 
 export type GetWorkspaceFeaturesQueryVariables = Exact<{
   workspaceId: Scalars['String']['input'];
@@ -1678,6 +1852,7 @@ export type ListHistoryQuery = {
       __typename?: 'DocHistoryType';
       id: string;
       timestamp: string;
+      createdByUser: UserType | undefined;
     }>;
   };
 };
@@ -1740,17 +1915,6 @@ export type ListUsersQuery = {
     hasPassword: boolean | null;
     emailVerified: boolean;
     avatarUrl: string | null;
-    quota: {
-      __typename?: 'UserQuota';
-      humanReadable: {
-        __typename?: 'UserQuotaHumanReadable';
-        blobLimit: string;
-        historyPeriod: string;
-        memberLimit: string;
-        name: string;
-        storageQuota: string;
-      };
-    } | null;
   }>;
 };
 
@@ -1971,6 +2135,60 @@ export type SubscriptionQuery = {
   } | null;
 };
 
+export type UpdateAccountFeaturesMutationVariables = Exact<{
+  userId: Scalars['String']['input'];
+  features: Array<FeatureType> | FeatureType;
+}>;
+
+export type UpdateAccountFeaturesMutation = {
+  __typename?: 'Mutation';
+  updateUserFeatures: Array<FeatureType>;
+};
+
+export type UpdateAccountMutationVariables = Exact<{
+  id: Scalars['String']['input'];
+  input: ManageUserInput;
+}>;
+
+export type UpdateAccountMutation = {
+  __typename?: 'Mutation';
+  updateUser: {
+    __typename?: 'UserType';
+    id: string;
+    name: string;
+    email: string;
+  };
+};
+
+export type UpdatePromptMutationVariables = Exact<{
+  name: Scalars['String']['input'];
+  messages: Array<CopilotPromptMessageInput> | CopilotPromptMessageInput;
+}>;
+
+export type UpdatePromptMutation = {
+  __typename?: 'Mutation';
+  updateCopilotPrompt: {
+    __typename?: 'CopilotPromptType';
+    name: string;
+    model: string;
+    action: string | null;
+    config: {
+      __typename?: 'CopilotPromptConfigType';
+      jsonMode: boolean | null;
+      frequencyPenalty: number | null;
+      presencePenalty: number | null;
+      temperature: number | null;
+      topP: number | null;
+    } | null;
+    messages: Array<{
+      __typename?: 'CopilotPromptMessageType';
+      role: CopilotPromptMessageRole;
+      content: string;
+      params: Record<string, string> | null;
+    }>;
+  };
+};
+
 export type UpdateServerRuntimeConfigsMutationVariables = Exact<{
   updates: Scalars['JSONObject']['input'];
 }>;
@@ -2153,6 +2371,11 @@ export type WorkspaceQuotaQuery = {
 
 export type Queries =
   | {
+      name: 'adminServerConfigQuery';
+      variables: AdminServerConfigQueryVariables;
+      response: AdminServerConfigQuery;
+    }
+  | {
       name: 'listBlobsQuery';
       variables: ListBlobsQueryVariables;
       response: ListBlobsQuery;
@@ -2163,14 +2386,14 @@ export type Queries =
       response: CopilotQuotaQuery;
     }
   | {
-      name: 'earlyAccessUsersQuery';
-      variables: EarlyAccessUsersQueryVariables;
-      response: EarlyAccessUsersQuery;
-    }
-  | {
       name: 'getCopilotHistoriesQuery';
       variables: GetCopilotHistoriesQueryVariables;
       response: GetCopilotHistoriesQuery;
+    }
+  | {
+      name: 'getCopilotHistoryIdsQuery';
+      variables: GetCopilotHistoryIdsQueryVariables;
+      response: GetCopilotHistoryIdsQuery;
     }
   | {
       name: 'getCopilotSessionsQuery';
@@ -2213,9 +2436,24 @@ export type Queries =
       response: OauthProvidersQuery;
     }
   | {
+      name: 'getPromptsQuery';
+      variables: GetPromptsQueryVariables;
+      response: GetPromptsQuery;
+    }
+  | {
       name: 'getServerRuntimeConfigQuery';
       variables: GetServerRuntimeConfigQueryVariables;
       response: GetServerRuntimeConfigQuery;
+    }
+  | {
+      name: 'getServerServiceConfigsQuery';
+      variables: GetServerServiceConfigsQueryVariables;
+      response: GetServerServiceConfigsQuery;
+    }
+  | {
+      name: 'getUserByEmailQuery';
+      variables: GetUserByEmailQueryVariables;
+      response: GetUserByEmailQuery;
     }
   | {
       name: 'getUserFeaturesQuery';
@@ -2226,6 +2464,11 @@ export type Queries =
       name: 'getUserQuery';
       variables: GetUserQueryVariables;
       response: GetUserQuery;
+    }
+  | {
+      name: 'getUsersCountQuery';
+      variables: GetUsersCountQueryVariables;
+      response: GetUsersCountQuery;
     }
   | {
       name: 'getWorkspaceFeaturesQuery';
@@ -2340,6 +2583,11 @@ export type Mutations =
       response: ChangeEmailMutation;
     }
   | {
+      name: 'createChangePasswordUrlMutation';
+      variables: CreateChangePasswordUrlMutationVariables;
+      response: CreateChangePasswordUrlMutation;
+    }
+  | {
       name: 'changePasswordMutation';
       variables: ChangePasswordMutationVariables;
       response: ChangePasswordMutation;
@@ -2370,6 +2618,11 @@ export type Mutations =
       response: CreateCustomerPortalMutation;
     }
   | {
+      name: 'createUserMutation';
+      variables: CreateUserMutationVariables;
+      response: CreateUserMutation;
+    }
+  | {
       name: 'createWorkspaceMutation';
       variables: CreateWorkspaceMutationVariables;
       response: CreateWorkspaceMutation;
@@ -2380,14 +2633,14 @@ export type Mutations =
       response: DeleteAccountMutation;
     }
   | {
+      name: 'deleteUserMutation';
+      variables: DeleteUserMutationVariables;
+      response: DeleteUserMutation;
+    }
+  | {
       name: 'deleteWorkspaceMutation';
       variables: DeleteWorkspaceMutationVariables;
       response: DeleteWorkspaceMutation;
-    }
-  | {
-      name: 'removeEarlyAccessMutation';
-      variables: RemoveEarlyAccessMutationVariables;
-      response: RemoveEarlyAccessMutation;
     }
   | {
       name: 'forkCopilotSessionMutation';
@@ -2458,6 +2711,21 @@ export type Mutations =
       name: 'setWorkspacePublicByIdMutation';
       variables: SetWorkspacePublicByIdMutationVariables;
       response: SetWorkspacePublicByIdMutation;
+    }
+  | {
+      name: 'updateAccountFeaturesMutation';
+      variables: UpdateAccountFeaturesMutationVariables;
+      response: UpdateAccountFeaturesMutation;
+    }
+  | {
+      name: 'updateAccountMutation';
+      variables: UpdateAccountMutationVariables;
+      response: UpdateAccountMutation;
+    }
+  | {
+      name: 'updatePromptMutation';
+      variables: UpdatePromptMutationVariables;
+      response: UpdatePromptMutation;
     }
   | {
       name: 'updateServerRuntimeConfigsMutation';

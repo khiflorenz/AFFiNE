@@ -5,26 +5,25 @@ import { configureCloudModule } from './cloud';
 import { configureCollectionModule } from './collection';
 import { configureDocLinksModule } from './doc-link';
 import { configureDocsSearchModule } from './docs-search';
+import { configureExplorerModule } from './explorer';
+import { configureFavoriteModule } from './favorite';
 import { configureFindInPageModule } from './find-in-page';
 import { configureNavigationModule } from './navigation';
+import { configureOrganizeModule } from './organize';
 import { configurePeekViewModule } from './peek-view';
 import { configurePermissionsModule } from './permissions';
 import { configureWorkspacePropertiesModule } from './properties';
 import { configureQuickSearchModule } from './quicksearch';
-import { configureRightSidebarModule } from './right-sidebar';
 import { configureShareDocsModule } from './share-doc';
-import { configureStorageImpls } from './storage';
 import { configureTagModule } from './tag';
 import { configureTelemetryModule } from './telemetry';
-import { configureWorkbenchModule } from './workbench';
+import { configureThemeEditorModule } from './theme-editor';
 
 export function configureCommonModules(framework: Framework) {
   configureInfraModules(framework);
   configureCollectionModule(framework);
   configureNavigationModule(framework);
-  configureRightSidebarModule(framework);
   configureTagModule(framework);
-  configureWorkbenchModule(framework);
   configureWorkspacePropertiesModule(framework);
   configureCloudModule(framework);
   configureQuotaModule(framework);
@@ -36,8 +35,8 @@ export function configureCommonModules(framework: Framework) {
   configureQuickSearchModule(framework);
   configureDocsSearchModule(framework);
   configureDocLinksModule(framework);
-}
-
-export function configureImpls(framework: Framework) {
-  configureStorageImpls(framework);
+  configureOrganizeModule(framework);
+  configureFavoriteModule(framework);
+  configureExplorerModule(framework);
+  configureThemeEditorModule(framework);
 }

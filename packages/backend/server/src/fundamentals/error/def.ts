@@ -63,7 +63,7 @@ export class UserFriendlyError extends Error {
     // disallow message override for `internal_server_error`
     // to avoid leak internal information to user
     let msg =
-      name === 'internal_server_error' ? defaultMsg : message ?? defaultMsg;
+      name === 'internal_server_error' ? defaultMsg : (message ?? defaultMsg);
 
     if (typeof msg === 'function') {
       msg = msg(args);
@@ -95,7 +95,7 @@ export class UserFriendlyError extends Error {
 
     new Logger(context).error(
       'Internal server error',
-      this.cause ? (this.cause as any).stack ?? this.cause : this.stack
+      this.cause ? ((this.cause as any).stack ?? this.cause) : this.stack
     );
   }
 }
@@ -254,6 +254,10 @@ export const USER_FRIENDLY_ERRORS = {
     message: ({ min, max }) =>
       `Password must be between ${min} and ${max} characters`,
   },
+  password_required: {
+    type: 'invalid_input',
+    message: 'Password is required.',
+  },
   wrong_sign_in_method: {
     type: 'invalid_input',
     message:
@@ -274,6 +278,10 @@ export const USER_FRIENDLY_ERRORS = {
   invalid_email_token: {
     type: 'invalid_input',
     message: 'An invalid email token provided.',
+  },
+  link_expired: {
+    type: 'bad_request',
+    message: 'The link has expired.',
   },
 
   // Authentication & Permission Errors
@@ -460,7 +468,7 @@ export const USER_FRIENDLY_ERRORS = {
     type: 'internal_server_error',
     args: { provider: 'string', kind: 'string', message: 'string' },
     message: ({ provider, kind, message }) =>
-      `Provider ${provider} failed with ${kind} error: ${message || 'unknown'}.`,
+      `Provider ${provider} failed with ${kind} error: ${message || 'unknown'}`,
   },
 
   // Quota & Limit errors
@@ -493,5 +501,13 @@ export const USER_FRIENDLY_ERRORS = {
   mailer_service_is_not_configured: {
     type: 'internal_server_error',
     message: 'Mailer service is not configured.',
+  },
+  cannot_delete_all_admin_account: {
+    type: 'action_forbidden',
+    message: 'Cannot delete all admin accounts.',
+  },
+  cannot_delete_own_account: {
+    type: 'action_forbidden',
+    message: 'Cannot delete own account.',
   },
 } satisfies Record<string, UserFriendlyErrorOptions>;
