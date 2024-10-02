@@ -56,7 +56,7 @@ export class DocStorageCronJob implements OnModuleInit {
     }
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT /* everyday at 12am */)
+  // @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT /* everyday at 12am */)
   async cleanupExpiredHistory() {
     await this.db.snapshotHistory.deleteMany({
       where: {
