@@ -1,4 +1,4 @@
-import { Loading, Scrollable } from '@affine/component';
+import { Loading, Scrollable, Avatar } from '@affine/component';
 import { EditorLoading } from '@affine/component/page-detail-skeleton';
 import { Button, IconButton } from '@affine/component/ui/button';
 import { Modal, useConfirmModal } from '@affine/component/ui/modal';
@@ -300,7 +300,6 @@ const PageHistoryList = ({
       </div>
       <Scrollable.Root className={styles.historyListScrollable}>
         <Scrollable.Viewport className={styles.historyListScrollableInner}>
-          <PlanPrompt />
           {historyListByDay.map(([day, list], i) => {
             const collapsed = collapsedMap[i];
             return (
@@ -340,11 +339,36 @@ const PageHistoryList = ({
                           }}
                           data-active={activeVersion === history.timestamp}
                         >
-                          <button>
-                            {i18nTime(history.timestamp, {
-                              absolute: { noDate: true, accuracy: 'minute' },
-                            })}
-                          </button>
+                          {history.createdByUser
+                            ? (
+                                <button className={styles.historyItemButton}>
+                                  <div className={styles.historyItemAvatar}>
+                                    <Avatar
+                                      size={24}
+                                      name={history.createdByUser.name}
+                                      url={history.createdByUser.avatarUrl}
+                                    />
+                                  </div>
+                                  <div className={styles.historyItemInfos}>
+                                    <p className={styles.historyItemInfoTitle}>
+                                      {history.createdByUser.name}
+                                    </p>
+                                    <span className={styles.historyItemInfoSubTitle}>
+                                      {i18nTime(history.timestamp, {
+                                        absolute: { noDate: true, accuracy: 'minute' },
+                                      })}
+                                    </span>                                    
+                                  </div>
+                                </button>
+                              )
+                            : (
+                                <button>
+                                  {i18nTime(history.timestamp, {
+                                    absolute: { noDate: true, accuracy: 'minute' },
+                                  })}
+                                </button>
+                              )
+                          }                          
                         </div>
                         {idx > list.length - 1 ? (
                           <div className={styles.historyItemGap} />

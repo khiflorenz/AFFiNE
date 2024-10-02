@@ -62,8 +62,6 @@ export const WorkspaceLayout = function WorkspaceLayout({
       <CurrentWorkspaceModals />
       <WorkspaceLayoutInner>{children}</WorkspaceLayoutInner>
       {/* should show after workspace loaded */}
-      <WorkspaceAIOnboarding />
-      <AIIsland />
     </SWRConfigProvider>
   );
 };
