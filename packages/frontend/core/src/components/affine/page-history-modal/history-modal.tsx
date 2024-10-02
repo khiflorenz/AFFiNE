@@ -339,19 +339,19 @@ const PageHistoryList = ({
                           }}
                           data-active={activeVersion === history.timestamp}
                         >
-                          {history.createdByUser
+                          {history.editor
                             ? (
                                 <button className={styles.historyItemButton}>
                                   <div className={styles.historyItemAvatar}>
                                     <Avatar
                                       size={24}
-                                      name={history.createdByUser.name}
-                                      url={history.createdByUser.avatarUrl}
+                                      name={history.editor.name}
+                                      url={history.editor.avatarUrl}
                                     />
                                   </div>
                                   <div className={styles.historyItemInfos}>
                                     <p className={styles.historyItemInfoTitle}>
-                                      {history.createdByUser.name}
+                                      {history.editor.name}
                                     </p>
                                     <span className={styles.historyItemInfoSubTitle}>
                                       {i18nTime(history.timestamp, {
