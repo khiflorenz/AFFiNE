@@ -166,7 +166,7 @@ impl SqliteConnection {
   }
 
   #[napi]
-  pub async fn get_updates_count(&self, doc_id: Option<String>) -> napi::Result<i32> {
+  pub async fn get_updates_count(&self, doc_id: Option<String>) -> napi::Result<i64> {
     let count = match doc_id {
       Some(doc_id) => {
         sqlx::query!(
@@ -394,7 +394,7 @@ impl SqliteConnection {
   }
 
   #[napi]
-  pub async fn get_max_version(&self) -> napi::Result<i32> {
+  pub async fn get_max_version(&self) -> napi::Result<i64> {
     // 4 is the current version
     let version = sqlx::query!("SELECT COALESCE(MAX(version), 4) AS max_version FROM version_info")
       .fetch_one(&self.pool)

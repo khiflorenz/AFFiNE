@@ -14,15 +14,17 @@ import '../_common/components/chat-action-list';
 import '../_common/components/copy-more';
 
 import type { BaseSelection, EditorHost } from '@blocksuite/block-std';
-import { ShadowlessElement, WithDisposable } from '@blocksuite/block-std';
+import { ShadowlessElement } from '@blocksuite/block-std';
 import {
   type AIError,
+  DocModeProvider,
   isInsidePageEditor,
   PaymentRequiredError,
   UnauthorizedError,
 } from '@blocksuite/blocks';
+import { WithDisposable } from '@blocksuite/global/utils';
 import { css, html, nothing, type PropertyValues } from 'lit';
-import { customElement, property, query, state } from 'lit/decorators.js';
+import { property, query, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { styleMap } from 'lit/directives/style-map.js';
 
@@ -37,7 +39,6 @@ import type { ChatContextValue, ChatItem, ChatMessage } from './chat-context';
 import { HISTORY_IMAGE_ACTIONS } from './const';
 import { AIPreloadConfig } from './preload-config';
 
-@customElement('chat-panel-messages')
 export class ChatPanelMessages extends WithDisposable(ShadowlessElement) {
   static override styles = css`
     chat-panel-messages {
@@ -161,8 +162,13 @@ export class ChatPanelMessages extends WithDisposable(ShadowlessElement) {
           this._selectionValue = this.host.selection.value;
         })
       );
-      const { docModeService } = this.host.spec.getService('affine:page');
-      disposables.add(docModeService.onModeChange(() => this.requestUpdate()));
+      const docModeService = this.host.std.get(DocModeProvider);
+      disposables.add(
+        docModeService.onPrimaryModeChange(
+          () => this.requestUpdate(),
+          this.host.doc.id
+        )
+      );
     }
   }
 

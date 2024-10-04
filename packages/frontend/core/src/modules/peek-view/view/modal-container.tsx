@@ -1,5 +1,5 @@
-import { useAppSettingHelper } from '@affine/core/hooks/affine/use-app-setting-helper';
 import * as Dialog from '@radix-ui/react-dialog';
+import { useLiveData, useService } from '@toeverything/infra';
 import anime, { type AnimeInstance, type AnimeParams } from 'animejs';
 import clsx from 'clsx';
 import {
@@ -13,7 +13,8 @@ import {
   useState,
 } from 'react';
 
-import type { PeekViewAnimation } from '../entities/peek-view';
+import { EditorSettingService } from '../../editor-settting';
+import type { PeekViewAnimation, PeekViewMode } from '../entities/peek-view';
 import * as styles from './modal-container.css';
 
 const contentOptions: Dialog.DialogContentProps = {
@@ -54,7 +55,7 @@ export type PeekViewModalContainerProps = PropsWithChildren<{
   controls?: React.ReactNode;
   onAnimationStart?: () => void;
   onAnimateEnd?: () => void;
-  padding?: boolean;
+  mode?: PeekViewMode;
   animation?: PeekViewAnimation;
   testId?: string;
   /** Whether to apply shadow & bg */
@@ -76,7 +77,7 @@ export const PeekViewModalContainer = forwardRef<
     onAnimationStart,
     onAnimateEnd,
     animation = 'zoom',
-    padding = true,
+    mode = 'fit',
     dialogFrame = true,
   },
   ref
@@ -90,7 +91,10 @@ export const PeekViewModalContainer = forwardRef<
   const overlayRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
   const prevAnimeMap = useRef<Record<string, AnimeInstance | undefined>>({});
-  const { appSettings } = useAppSettingHelper();
+  const editorSettings = useService(EditorSettingService).editorSetting;
+  const fullWidthLayout = useLiveData(
+    editorSettings.settings$.selector(s => s.fullWidthLayout)
+  );
 
   const animateControls = useCallback((animateIn = false) => {
     const controls = controlsRef.current;
@@ -314,13 +318,13 @@ export const PeekViewModalContainer = forwardRef<
           />
           <div
             ref={ref}
-            data-padding={padding}
+            data-mode={mode}
             data-peek-view-wrapper
-            className={clsx(styles.modalContentWrapper)}
+            className={styles.modalContentWrapper}
           >
             <div
               data-anime-state={animeState}
-              data-full-width-layout={appSettings.fullWidthLayout}
+              data-full-width-layout={fullWidthLayout}
               ref={contentClipRef}
               className={styles.modalContentContainer}
             >

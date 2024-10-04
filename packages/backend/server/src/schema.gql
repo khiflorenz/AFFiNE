@@ -2,9 +2,13 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
+type AlreadyInSpaceDataType {
+  spaceId: String!
+}
+
 type BlobNotFoundDataType {
   blobId: String!
-  workspaceId: String!
+  spaceId: String!
 }
 
 type ChatMessage {
@@ -92,17 +96,17 @@ type DeleteAccount {
 
 type DocAccessDeniedDataType {
   docId: String!
-  workspaceId: String!
+  spaceId: String!
 }
 
 type DocHistoryNotFoundDataType {
   docId: String!
+  spaceId: String!
   timestamp: Int!
-  workspaceId: String!
 }
 
 type DocHistoryType {
-  createdByUser: UserType
+  editor: EditorType
   id: String!
   timestamp: DateTime!
   workspaceId: String!
@@ -110,21 +114,28 @@ type DocHistoryType {
 
 type DocNotFoundDataType {
   docId: String!
-  workspaceId: String!
+  spaceId: String!
 }
 
-union ErrorDataUnion = BlobNotFoundDataType | CopilotMessageNotFoundDataType | CopilotPromptNotFoundDataType | CopilotProviderSideErrorDataType | DocAccessDeniedDataType | DocHistoryNotFoundDataType | DocNotFoundDataType | InvalidHistoryTimestampDataType | InvalidPasswordLengthDataType | InvalidRuntimeConfigTypeDataType | MissingOauthQueryParameterDataType | NotInWorkspaceDataType | RuntimeConfigNotFoundDataType | SameSubscriptionRecurringDataType | SubscriptionAlreadyExistsDataType | SubscriptionNotExistsDataType | SubscriptionPlanNotFoundDataType | UnknownOauthProviderDataType | VersionRejectedDataType | WorkspaceAccessDeniedDataType | WorkspaceNotFoundDataType | WorkspaceOwnerNotFoundDataType
+type EditorType {
+  avatarUrl: String
+  name: String!
+}
+
+union ErrorDataUnion = AlreadyInSpaceDataType | BlobNotFoundDataType | CopilotMessageNotFoundDataType | CopilotPromptNotFoundDataType | CopilotProviderSideErrorDataType | DocAccessDeniedDataType | DocHistoryNotFoundDataType | DocNotFoundDataType | InvalidHistoryTimestampDataType | InvalidPasswordLengthDataType | InvalidRuntimeConfigTypeDataType | MissingOauthQueryParameterDataType | NotInSpaceDataType | RuntimeConfigNotFoundDataType | SameSubscriptionRecurringDataType | SpaceAccessDeniedDataType | SpaceNotFoundDataType | SpaceOwnerNotFoundDataType | SubscriptionAlreadyExistsDataType | SubscriptionNotExistsDataType | SubscriptionPlanNotFoundDataType | UnknownOauthProviderDataType | VersionRejectedDataType
 
 enum ErrorNames {
   ACCESS_DENIED
   ACTION_FORBIDDEN
+  ALREADY_IN_SPACE
   AUTHENTICATION_REQUIRED
   BLOB_NOT_FOUND
   BLOB_QUOTA_EXCEEDED
   CANNOT_DELETE_ALL_ADMIN_ACCOUNT
   CANNOT_DELETE_OWN_ACCOUNT
-  CANT_CHANGE_WORKSPACE_OWNER
+  CANT_CHANGE_SPACE_OWNER
   CANT_UPDATE_LIFETIME_SUBSCRIPTION
+  CAPTCHA_VERIFICATION_FAILED
   COPILOT_ACTION_TAKEN
   COPILOT_FAILED_TO_CREATE_MESSAGE
   COPILOT_FAILED_TO_GENERATE_TEXT
@@ -146,6 +157,8 @@ enum ErrorNames {
   EXPECT_TO_PUBLISH_PAGE
   EXPECT_TO_REVOKE_PUBLIC_PAGE
   FAILED_TO_CHECKOUT
+  FAILED_TO_SAVE_UPDATES
+  FAILED_TO_UPSERT_SNAPSHOT
   INTERNAL_SERVER_ERROR
   INVALID_EMAIL
   INVALID_EMAIL_TOKEN
@@ -157,7 +170,8 @@ enum ErrorNames {
   MAILER_SERVICE_IS_NOT_CONFIGURED
   MEMBER_QUOTA_EXCEEDED
   MISSING_OAUTH_QUERY_PARAMETER
-  NOT_IN_WORKSPACE
+  NOT_FOUND
+  NOT_IN_SPACE
   NO_COPILOT_PROVIDER_AVAILABLE
   OAUTH_ACCOUNT_ALREADY_CONNECTED
   OAUTH_STATE_EXPIRED
@@ -167,6 +181,9 @@ enum ErrorNames {
   SAME_EMAIL_PROVIDED
   SAME_SUBSCRIPTION_RECURRING
   SIGN_UP_FORBIDDEN
+  SPACE_ACCESS_DENIED
+  SPACE_NOT_FOUND
+  SPACE_OWNER_NOT_FOUND
   SUBSCRIPTION_ALREADY_EXISTS
   SUBSCRIPTION_EXPIRED
   SUBSCRIPTION_HAS_BEEN_CANCELED
@@ -178,9 +195,6 @@ enum ErrorNames {
   USER_AVATAR_NOT_FOUND
   USER_NOT_FOUND
   VERSION_REJECTED
-  WORKSPACE_ACCESS_DENIED
-  WORKSPACE_NOT_FOUND
-  WORKSPACE_OWNER_NOT_FOUND
   WRONG_SIGN_IN_CREDENTIALS
   WRONG_SIGN_IN_METHOD
 }
@@ -352,8 +366,8 @@ type Mutation {
   revokePage(pageId: String!, workspaceId: String!): Boolean! @deprecated(reason: "use revokePublicPage")
   revokePublicPage(pageId: String!, workspaceId: String!): WorkspacePage!
   sendChangeEmail(callbackUrl: String!, email: String): Boolean!
-  sendChangePasswordEmail(callbackUrl: String!, email: String): Boolean!
-  sendSetPasswordEmail(callbackUrl: String!, email: String): Boolean!
+  sendChangePasswordEmail(callbackUrl: String!, email: String @deprecated(reason: "fetched from signed in user")): Boolean!
+  sendSetPasswordEmail(callbackUrl: String!, email: String @deprecated(reason: "fetched from signed in user")): Boolean!
   sendVerifyChangeEmail(callbackUrl: String!, email: String!, token: String!): Boolean!
   sendVerifyEmail(callbackUrl: String!): Boolean!
   setBlob(blob: Upload!, workspaceId: String!): String!
@@ -382,8 +396,8 @@ type Mutation {
   verifyEmail(token: String!): Boolean!
 }
 
-type NotInWorkspaceDataType {
-  workspaceId: String!
+type NotInSpaceDataType {
+  spaceId: String!
 }
 
 enum OAuthProviderType {
@@ -464,6 +478,7 @@ type QuotaQueryType {
   copilotActionLimit: SafeInt
   historyPeriod: SafeInt!
   humanReadable: HumanReadableQuotaType!
+  memberCount: SafeInt!
   memberLimit: SafeInt!
   name: String!
   storageQuota: SafeInt!
@@ -537,6 +552,7 @@ enum ServerDeploymentType {
 }
 
 enum ServerFeature {
+  Captcha
   Copilot
   OAuth
   Payment
@@ -560,6 +576,18 @@ type ServerRuntimeConfigType {
 type ServerServiceConfig {
   config: JSONObject!
   name: String!
+}
+
+type SpaceAccessDeniedDataType {
+  spaceId: String!
+}
+
+type SpaceNotFoundDataType {
+  spaceId: String!
+}
+
+type SpaceOwnerNotFoundDataType {
+  spaceId: String!
 }
 
 type SubscriptionAlreadyExistsDataType {
@@ -620,6 +648,8 @@ input UpdateUserInput {
 }
 
 input UpdateWorkspaceInput {
+  """Enable url previous when sharing"""
+  enableUrlPreview: Boolean
   id: ID!
 
   """is Public workspace"""
@@ -711,7 +741,7 @@ type UserType {
   quota: UserQuota
   subscription(plan: SubscriptionPlan = Pro): UserSubscription @deprecated(reason: "use `UserType.subscriptions`")
   subscriptions: [UserSubscription!]!
-  token: tokenType! @deprecated(reason: "use [/api/auth/authorize]")
+  token: tokenType! @deprecated(reason: "use [/api/auth/sign-in?native=true] instead")
 }
 
 type VersionRejectedDataType {
@@ -719,20 +749,8 @@ type VersionRejectedDataType {
   version: String!
 }
 
-type WorkspaceAccessDeniedDataType {
-  workspaceId: String!
-}
-
 type WorkspaceBlobSizes {
   size: SafeInt!
-}
-
-type WorkspaceNotFoundDataType {
-  workspaceId: String!
-}
-
-type WorkspaceOwnerNotFoundDataType {
-  workspaceId: String!
 }
 
 type WorkspacePage {
@@ -740,6 +758,13 @@ type WorkspacePage {
   mode: PublicPageMode!
   public: Boolean!
   workspaceId: String!
+}
+
+type WorkspacePageMeta {
+  createdAt: DateTime!
+  createdBy: EditorType
+  updatedAt: DateTime!
+  updatedBy: EditorType
 }
 
 type WorkspaceType {
@@ -755,10 +780,16 @@ type WorkspaceType {
   """Workspace created date"""
   createdAt: DateTime!
 
+  """Enable url previous when sharing"""
+  enableUrlPreview: Boolean!
+
   """Enabled features of workspace"""
   features: [FeatureType!]!
   histories(before: DateTime, guid: String!, take: Int): [DocHistoryType!]!
   id: ID!
+
+  """is current workspace initialized"""
+  initialized: Boolean!
 
   """member count of workspace"""
   memberCount: Int!
@@ -768,6 +799,9 @@ type WorkspaceType {
 
   """Owner of workspace"""
   owner: UserType!
+
+  """Cloud page metadata of workspace"""
+  pageMeta(pageId: String!): WorkspacePageMeta!
 
   """Permission of current signed in user in workspace"""
   permission: Permission!

@@ -1,13 +1,15 @@
 import { Skeleton } from '@affine/component';
 import { ResizePanel } from '@affine/component/resize-panel';
+import { useAppSettingHelper } from '@affine/core/components/hooks/affine/use-app-setting-helper';
+import { NavigateContext } from '@affine/core/components/hooks/use-navigate-helper';
 import { useServiceOptional, WorkspaceService } from '@toeverything/infra';
 import { useAtom, useAtomValue } from 'jotai';
 import { debounce } from 'lodash-es';
 import type { PropsWithChildren, ReactElement } from 'react';
-import { useEffect } from 'react';
+import { useContext, useEffect, useMemo } from 'react';
 
-import { WorkspaceSelector } from '../workspace-selector';
-import { fallbackHeaderStyle, fallbackStyle } from './fallback.css';
+import { WorkspaceNavigator } from '../workspace-selector';
+import * as styles from './fallback.css';
 import {
   floatingMaxWidth,
   navBodyStyle,
@@ -25,11 +27,6 @@ import {
 } from './index.jotai';
 import { SidebarHeader } from './sidebar-header';
 
-export type AppSidebarProps = PropsWithChildren<{
-  clientBorder?: boolean;
-  translucentUI?: boolean;
-}>;
-
 export type History = {
   stack: string[];
   current: number;
@@ -38,10 +35,11 @@ export type History = {
 const MAX_WIDTH = 480;
 const MIN_WIDTH = 248;
 
-export function AppSidebar({
-  children,
-  clientBorder,
-}: AppSidebarProps): ReactElement {
+export function AppSidebar({ children }: PropsWithChildren) {
+  const { appSettings } = useAppSettingHelper();
+
+  const clientBorder = appSettings.clientBorder;
+
   const [open, setOpen] = useAtom(appSidebarOpenAtom);
   const [width, setWidth] = useAtom(appSidebarWidthAtom);
   const [floating, setFloating] = useAtom(appSidebarFloatingAtom);
@@ -49,7 +47,7 @@ export function AppSidebar({
 
   useEffect(() => {
     // do not float app sidebar on desktop
-    if (environment.isDesktop) {
+    if (BUILD_CONFIG.isElectron) {
       return;
     }
 
@@ -79,8 +77,9 @@ export function AppSidebar({
     };
   }, [open, setFloating, setOpen, width]);
 
-  const hasRightBorder = !environment.isDesktop && !clientBorder;
-  const isMacosDesktop = environment.isDesktop && environment.isMacOs;
+  const hasRightBorder = !BUILD_CONFIG.isElectron && !clientBorder;
+  const isMacosDesktop = BUILD_CONFIG.isElectron && environment.isMacOs;
+
   return (
     <>
       <ResizePanel
@@ -95,16 +94,17 @@ export function AppSidebar({
         onResizing={setResizing}
         onWidthChange={setWidth}
         className={navWrapperStyle}
-        resizeHandleOffset={clientBorder ? 8 : 0}
+        resizeHandleOffset={0}
         resizeHandleVerticalPadding={clientBorder ? 16 : 0}
         data-transparent
         data-open={open}
         data-has-border={hasRightBorder}
         data-testid="app-sidebar-wrapper"
         data-is-macos-electron={isMacosDesktop}
+        data-client-border={clientBorder}
       >
         <nav className={navStyle} data-testid="app-sidebar">
-          {!environment.isDesktop && <SidebarHeader />}
+          {!BUILD_CONFIG.isElectron && <SidebarHeader />}
           <div className={navBodyStyle} data-testid="sliderBar-inner">
             {children}
           </div>
@@ -121,31 +121,137 @@ export function AppSidebar({
   );
 }
 
-export const AppSidebarFallback = (): ReactElement | null => {
-  const width = useAtomValue(appSidebarWidthAtom);
+export function FallbackHeader() {
+  return (
+    <div className={styles.fallbackHeader}>
+      <FallbackHeaderSkeleton />
+    </div>
+  );
+}
+
+export function FallbackHeaderWithWorkspaceNavigator() {
+  // if navigate is not defined, it is rendered outside of router
+  // WorkspaceNavigator requires navigate context
+  // todo: refactor
+  const navigate = useContext(NavigateContext);
 
   const currentWorkspace = useServiceOptional(WorkspaceService);
+  return (
+    <div className={styles.fallbackHeader}>
+      {!currentWorkspace && navigate ? (
+        <WorkspaceNavigator
+          showSettingsButton
+          showSyncStatus
+          showEnableCloudButton
+        />
+      ) : (
+        <FallbackHeaderSkeleton />
+      )}
+    </div>
+  );
+}
+
+export function FallbackHeaderSkeleton() {
+  return (
+    <>
+      <Skeleton variant="rectangular" width={32} height={32} />
+      <Skeleton variant="rectangular" width={150} height={32} flex={1} />
+      <Skeleton variant="circular" width={25} height={25} />
+    </>
+  );
+}
+
+const randomWidth = () => {
+  return Math.floor(Math.random() * 200) + 100;
+};
+
+const RandomBar = ({ className }: { className?: string }) => {
+  const width = useMemo(() => randomWidth(), []);
+  return (
+    <Skeleton
+      variant="rectangular"
+      width={width}
+      height={16}
+      className={className}
+    />
+  );
+};
+
+const RandomBars = ({ count, header }: { count: number; header?: boolean }) => {
+  return (
+    <div className={styles.fallbackGroupItems}>
+      {header ? (
+        <Skeleton
+          className={styles.fallbackItemHeader}
+          variant="rectangular"
+          width={50}
+          height={16}
+        />
+      ) : null}
+      {Array.from({ length: count }).map((_, index) => (
+        <RandomBar key={index} />
+      ))}
+    </div>
+  );
+};
+
+const FallbackBody = () => {
+  return (
+    <div className={styles.fallbackBody}>
+      <RandomBars count={3} />
+      <RandomBars count={4} header />
+      <RandomBars count={4} header />
+      <RandomBars count={3} header />
+    </div>
+  );
+};
+
+export const AppSidebarFallback = (): ReactElement | null => {
+  const width = useAtomValue(appSidebarWidthAtom);
+  const { appSettings } = useAppSettingHelper();
+  const clientBorder = appSettings.clientBorder;
+
   return (
     <div
       style={{ width }}
       className={navWrapperStyle}
-      data-has-border
+      data-has-border={!BUILD_CONFIG.isElectron && !clientBorder}
       data-open="true"
     >
       <nav className={navStyle}>
-        <div className={navHeaderStyle} data-open="true" />
+        {!BUILD_CONFIG.isElectron ? <div className={navHeaderStyle} /> : null}
         <div className={navBodyStyle}>
-          <div className={fallbackStyle}>
-            <div className={fallbackHeaderStyle}>
-              {currentWorkspace ? (
-                <WorkspaceSelector />
-              ) : (
-                <>
-                  <Skeleton variant="circular" width={40} height={40} />
-                  <Skeleton variant="rectangular" width={150} height={40} />
-                </>
-              )}
-            </div>
+          <div className={styles.fallback}>
+            <FallbackHeaderWithWorkspaceNavigator />
+            <FallbackBody />
+          </div>
+        </div>
+      </nav>
+    </div>
+  );
+};
+
+/**
+ * NOTE(@forehalo): this is a copy of [AppSidebarFallback] without [WorkspaceNavigator] which will introduce a lot useless dependencies for shell(tab bar)
+ */
+export const ShellAppSidebarFallback = () => {
+  const width = useAtomValue(appSidebarWidthAtom);
+  const { appSettings } = useAppSettingHelper();
+  const clientBorder = appSettings.clientBorder;
+
+  return (
+    <div
+      style={{ width }}
+      className={navWrapperStyle}
+      data-has-border={!BUILD_CONFIG.isElectron && !clientBorder}
+      data-open="true"
+    >
+      <nav className={navStyle}>
+        {!BUILD_CONFIG.isElectron ? <div className={navHeaderStyle} /> : null}
+        <div className={navBodyStyle}>
+          <div className={styles.fallback}>
+            <FallbackHeader />
+            <FallbackBody />
           </div>
         </div>
       </nav>

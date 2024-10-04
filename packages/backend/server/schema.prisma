@@ -32,9 +32,11 @@ model User {
   sessions              UserSession[]
   aiSessions            AiSession[]
   updatedRuntimeConfigs RuntimeConfig[]
-  snapshotCreated       Snapshot[]   @relation(name: "SnapshotCreated")
-  snapshotUpdated       Snapshot[]   @relation(name: "SnapshotUpdated")
-  snapshotHistory       SnapshotHistory[]
+  userSnapshots         UserSnapshot[]
+  createdSnapshot       Snapshot[]                    @relation("createdSnapshot")
+  updatedSnapshot       Snapshot[]                    @relation("updatedSnapshot")
+  createdUpdate         Update[]                      @relation("createdUpdate")
+  createdHistory        SnapshotHistory[]             @relation("createdHistory")
 
   @@index([email])
   @@map("users")
@@ -60,11 +62,12 @@ model ConnectedAccount {
 }
 
 model Session {
-  id        String    @id @default(uuid()) @db.VarChar
-  expiresAt DateTime? @map("expires_at") @db.Timestamptz(3)
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-
+  id           String        @id @default(uuid()) @db.VarChar
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
   userSessions UserSession[]
+
+  // @deprecated use [UserSession.expiresAt]
+  deprecated_expiresAt DateTime? @map("expires_at") @db.Timestamptz(3)
 
   @@map("multiple_users_sessions")
 }
@@ -94,9 +97,10 @@ model VerificationToken {
 }
 
 model Workspace {
-  id        String   @id @default(uuid()) @db.VarChar
-  public    Boolean
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  id               String   @id @default(uuid()) @db.VarChar
+  public           Boolean
+  enableUrlPreview Boolean  @default(false) @map("enable_url_preview")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   pages           WorkspacePage[]
   permissions     WorkspaceUserPermission[]
@@ -138,6 +142,8 @@ model WorkspaceUserPermission {
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@unique([workspaceId, userId])
+  // optimize for quering user's workspace permissions
+  @@index(userId)
   @@map("workspace_user_permissions")
 }
 
@@ -238,45 +244,75 @@ model Snapshot {
   workspaceId String   @map("workspace_id") @db.VarChar
   id          String   @default(uuid()) @map("guid") @db.VarChar
   blob        Bytes    @db.ByteA
-  seq         Int      @default(0) @db.Integer
   state       Bytes?   @db.ByteA
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   // the `updated_at` field will not record the time of record changed,
   // but the created time of last seen update that has been merged into snapshot.
   updatedAt   DateTime @map("updated_at") @db.Timestamptz(3)
+  createdBy   String?  @map("created_by") @db.VarChar
+  updatedBy   String?  @map("updated_by") @db.VarChar
 
-  createdByUser User?    @relation(name: "SnapshotCreated", fields: [createdBy], references: [id], onDelete: Cascade)
-  createdBy     String?  @map("created_by")
+  // should not delete origin snapshot even if user is deleted
+  // we only delete the snapshot if the workspace is deleted
+  createdByUser User? @relation(name: "createdSnapshot", fields: [createdBy], references: [id], onDelete: SetNull)
+  updatedByUser User? @relation(name: "updatedSnapshot", fields: [updatedBy], references: [id], onDelete: SetNull)
 
-  updatedByUser User?    @relation(name: "SnapshotUpdated", fields: [updatedBy], references: [id], onDelete: Cascade)
-  updatedBy     String?  @map("updated_by")
+  // @deprecated use updatedAt only
+  seq Int? @default(0) @db.Integer
 
-  @@id([id, workspaceId])
+  // we need to clear all hanging updates and snapshots before enable the foreign key on workspaceId
+  // workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@id([workspaceId, id])
+  @@index([workspaceId, updatedAt])
   @@map("snapshots")
+}
+
+// user snapshots are special snapshots for user storage like personal app settings, distinguished from workspace snapshots
+// basically they share the same structure with workspace snapshots
+// but for convenience, we don't fork the updates queue and hisotry for user snapshots, until we have to
+// which means all operation on user snapshot will happen in-pace
+model UserSnapshot {
+  userId    String   @map("user_id") @db.VarChar
+  id        String   @map("id") @db.VarChar
+  blob      Bytes    @db.ByteA
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, id])
+  @@map("user_snapshots")
 }
 
 model Update {
   workspaceId String   @map("workspace_id") @db.VarChar
   id          String   @map("guid") @db.VarChar
-  seq         Int      @db.Integer
   blob        Bytes    @db.ByteA
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy   String?  @map("created_by")
+  createdAt   DateTime @map("created_at") @db.Timestamptz(3)
+  createdBy   String?  @map("created_by") @db.VarChar
 
-  @@id([workspaceId, id, seq])
+  // will delete createor record if createor's account is deleted
+  createdByUser User? @relation(name: "createdUpdate", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  // @deprecated use createdAt only
+  seq Int? @db.Integer
+
+  @@id([workspaceId, id, createdAt])
   @@map("updates")
 }
 
 model SnapshotHistory {
-  workspaceId   String   @map("workspace_id") @db.VarChar
-  id            String   @map("guid") @db.VarChar
-  timestamp     DateTime @db.Timestamptz(3)
-  blob          Bytes    @db.ByteA
-  state         Bytes?   @db.ByteA
-  expiredAt     DateTime @map("expired_at") @db.Timestamptz(3)
+  workspaceId String   @map("workspace_id") @db.VarChar
+  id          String   @map("guid") @db.VarChar
+  timestamp   DateTime @db.Timestamptz(3)
+  blob        Bytes    @db.ByteA
+  state       Bytes?   @db.ByteA
+  expiredAt   DateTime @map("expired_at") @db.Timestamptz(3)
+  createdBy   String?  @map("created_by") @db.VarChar
 
-  createdByUser User?    @relation(fields: [createdBy], references: [id], onDelete: Cascade)
-  createdBy     String?  @map("created_by")
+  // will delete createor record if creator's account is deleted
+  createdByUser User? @relation(name: "createdHistory", fields: [createdBy], references: [id], onDelete: SetNull)
 
   @@id([workspaceId, id, timestamp])
   @@map("snapshot_histories")
@@ -311,7 +347,7 @@ model UserSubscription {
   // subscription.canceled_at
   canceledAt           DateTime? @map("canceled_at") @db.Timestamptz(3)
   // subscription.trial_start
-  trialStart           DateTime? @map("tial_start") @db.Timestamptz(3)
+  trialStart           DateTime? @map("trial_start") @db.Timestamptz(3)
   // subscription.trial_end
   trialEnd             DateTime? @map("trial_end") @db.Timestamptz(3)
   stripeScheduleId     String?   @map("stripe_schedule_id") @db.VarChar
@@ -380,6 +416,9 @@ model AiPrompt {
   model     String   @db.VarChar
   config    Json?    @db.Json
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(3)
+  // whether the prompt is modified by the admin panel
+  modified  Boolean  @default(false)
 
   messages AiPromptMessage[]
   sessions AiSession[]
@@ -399,6 +438,7 @@ model AiSessionMessage {
 
   session AiSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
+  @@index([sessionId])
   @@map("ai_sessions_messages")
 }
 
@@ -419,6 +459,8 @@ model AiSession {
   prompt   AiPrompt           @relation(fields: [promptName], references: [name], onDelete: Cascade)
   messages AiSessionMessage[]
 
+  @@index([userId])
+  @@index([userId, workspaceId])
   @@map("ai_sessions_metadata")
 }
 

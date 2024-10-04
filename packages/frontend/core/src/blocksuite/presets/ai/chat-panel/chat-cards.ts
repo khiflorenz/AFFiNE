@@ -1,11 +1,11 @@
 import type { EditorHost } from '@blocksuite/block-std';
-import { WithDisposable } from '@blocksuite/block-std';
 import {
   type ImageBlockModel,
   isInsideEdgelessEditor,
   type NoteBlockModel,
   NoteDisplayMode,
 } from '@blocksuite/blocks';
+import { WithDisposable } from '@blocksuite/global/utils';
 import type { BlockModel } from '@blocksuite/store';
 import {
   css,
@@ -15,7 +15,7 @@ import {
   type PropertyValues,
   type TemplateResult,
 } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
+import { property, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { styleMap } from 'lit/directives/style-map.js';
 
@@ -94,7 +94,6 @@ type Card = CardText | CardImage | CardBlock;
 
 const MAX_CARDS = 3;
 
-@customElement('chat-cards')
 export class ChatCards extends WithDisposable(LitElement) {
   static override styles = css`
     :host {

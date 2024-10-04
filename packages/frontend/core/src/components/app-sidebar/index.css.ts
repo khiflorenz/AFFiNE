@@ -2,7 +2,6 @@ import { cssVar } from '@toeverything/theme';
 import { style } from '@vanilla-extract/css';
 export const floatingMaxWidth = 768;
 export const navWrapperStyle = style({
-  paddingBottom: '8px',
   '@media': {
     print: {
       display: 'none',
@@ -15,6 +14,9 @@ export const navWrapperStyle = style({
     },
     '&[data-is-floating="true"]': {
       backgroundColor: cssVar('backgroundPrimaryColor'),
+    },
+    '&[data-client-border="true"]': {
+      paddingBottom: 8,
     },
   },
 });
@@ -42,7 +44,6 @@ export const navHeaderStyle = style({
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  ['WebkitAppRegion' as string]: 'drag',
 });
 
 export const navBodyStyle = style({

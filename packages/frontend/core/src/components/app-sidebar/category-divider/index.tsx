@@ -9,6 +9,7 @@ export type CategoryDividerProps = PropsWithChildren<
     label: string;
     className?: string;
     collapsed?: boolean;
+    mobile?: boolean;
     setCollapsed?: (collapsed: boolean) => void;
   } & {
     [key: `data-${string}`]: unknown;
@@ -22,6 +23,7 @@ export const CategoryDivider = forwardRef(
       children,
       className,
       collapsed,
+      mobile,
       setCollapsed,
       ...otherProps
     }: CategoryDividerProps,
@@ -31,14 +33,16 @@ export const CategoryDivider = forwardRef(
 
     return (
       <div
-        className={clsx([styles.root, className])}
+        className={clsx(mobile ? styles.mobileRoot : styles.root, className)}
         ref={ref}
+        role="switch"
         onClick={() => setCollapsed?.(!collapsed)}
+        data-mobile={mobile}
         data-collapsed={collapsed}
         data-collapsible={collapsible}
         {...otherProps}
       >
-        <div className={styles.label}>
+        <div className={mobile ? styles.mobileLabel : styles.label}>
           {label}
           {collapsible ? (
             <ToggleCollapseIcon
@@ -49,9 +53,11 @@ export const CategoryDivider = forwardRef(
             />
           ) : null}
         </div>
-        <div className={styles.actions} onClick={e => e.stopPropagation()}>
-          {children}
-        </div>
+        {mobile ? null : (
+          <div className={styles.actions} onClick={e => e.stopPropagation()}>
+            {children}
+          </div>
+        )}
       </div>
     );
   }

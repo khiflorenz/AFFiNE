@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient, User } from '@prisma/client';
 
 import {
   Config,
@@ -56,11 +56,6 @@ export class UserService {
 
   async createUser(data: CreateUserInput) {
     validators.assertValidEmail(data.email);
-    const user = await this.findUserByEmail(data.email);
-
-    if (user) {
-      throw new EmailAlreadyUsed();
-    }
 
     if (data.password) {
       const config = await this.config.runtime.fetchAll({
@@ -77,6 +72,12 @@ export class UserService {
   }
 
   async createUser_without_verification(data: CreateUserInput) {
+    const user = await this.findUserByEmail(data.email);
+
+    if (user) {
+      throw new EmailAlreadyUsed();
+    }
+
     if (data.password) {
       data.password = await this.crypto.encryptPassword(data.password);
     }
@@ -105,32 +106,76 @@ export class UserService {
       });
   }
 
-  async findUserByEmail(email: string) {
+  async findUserByEmail(
+    email: string
+  ): Promise<Pick<User, keyof typeof this.defaultUserSelect> | null> {
     validators.assertValidEmail(email);
-    return this.prisma.user.findFirst({
-      where: {
-        email: {
-          equals: email,
-          mode: 'insensitive',
-        },
-      },
-      select: this.defaultUserSelect,
-    });
+    const rows = await this.prisma.$queryRaw<
+      // see [this.defaultUserSelect]
+      {
+        id: string;
+        name: string;
+        email: string;
+        email_verified: Date | null;
+        avatar_url: string | null;
+        registered: boolean;
+        created_at: Date;
+      }[]
+    >`
+      SELECT "id", "name", "email", "email_verified", "avatar_url", "registered", "created_at"
+      FROM "users"
+      WHERE lower("email") = lower(${email})
+    `;
+
+    const user = rows[0];
+
+    if (!user) {
+      return null;
+    }
+
+    return {
+      ...user,
+      emailVerifiedAt: user.email_verified,
+      avatarUrl: user.avatar_url,
+      createdAt: user.created_at,
+    };
   }
 
   /**
    * supposed to be used only for `Credential SignIn`
    */
-  async findUserWithHashedPasswordByEmail(email: string) {
+  async findUserWithHashedPasswordByEmail(email: string): Promise<User | null> {
     validators.assertValidEmail(email);
-    return this.prisma.user.findFirst({
-      where: {
-        email: {
-          equals: email,
-          mode: 'insensitive',
-        },
-      },
-    });
+
+    // see https://www.prisma.io/docs/orm/prisma-client/using-raw-sql/raw-queries#typing-queryraw-results
+    const rows = await this.prisma.$queryRaw<
+      {
+        id: string;
+        name: string;
+        email: string;
+        password: string | null;
+        email_verified: Date | null;
+        avatar_url: string | null;
+        registered: boolean;
+        created_at: Date;
+      }[]
+    >`
+      SELECT *
+      FROM "users"
+      WHERE lower("email") = lower(${email})
+    `;
+
+    const user = rows[0];
+    if (!user) {
+      return null;
+    }
+
+    return {
+      ...user,
+      emailVerifiedAt: user.email_verified,
+      avatarUrl: user.avatar_url,
+      createdAt: user.created_at,
+    };
   }
 
   async signIn(email: string, password: string) {
@@ -158,9 +203,7 @@ export class UserService {
 
   async fulfillUser(
     email: string,
-    data: Partial<
-      Pick<Prisma.UserCreateInput, 'emailVerifiedAt' | 'registered'>
-    >
+    data: Omit<Partial<Prisma.UserCreateInput>, 'id'>
   ) {
     const user = await this.findUserByEmail(email);
     if (!user) {
@@ -180,7 +223,6 @@ export class UserService {
 
       if (Object.keys(data).length) {
         return await this.prisma.user.update({
-          select: this.defaultUserSelect,
           where: { id: user.id },
           data,
         });

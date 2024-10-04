@@ -1,10 +1,11 @@
-import type {
-  AffineAIPanelWidget,
-  AffineSlashMenuActionItem,
-  AffineSlashMenuContext,
-  AffineSlashMenuItem,
-  AffineSlashSubMenu,
-  AIItemConfig,
+import {
+  type AffineAIPanelWidget,
+  type AffineSlashMenuActionItem,
+  type AffineSlashMenuContext,
+  type AffineSlashMenuItem,
+  type AffineSlashSubMenu,
+  type AIItemConfig,
+  DocModeProvider,
 } from '@blocksuite/blocks';
 import {
   AFFINE_AI_PANEL_WIDGET,
@@ -19,7 +20,7 @@ import { AIItemGroups } from '../../_common/config';
 import { handleInlineAskAIAction } from '../../actions/doc-handler';
 import { AIProvider } from '../../provider';
 
-export function setupSlashMenuEntry(slashMenu: AffineSlashMenuWidget) {
+export function setupSlashMenuAIEntry(slashMenu: AffineSlashMenuWidget) {
   const AIItems = AIItemGroups.map(group => group.items).flat();
 
   const iconWrapper = (icon: AIItemConfig['icon']) => {
@@ -38,9 +39,8 @@ export function setupSlashMenuEntry(slashMenu: AffineSlashMenuWidget) {
       if (affineAIPanelWidget === null) return false;
 
       const chain = rootComponent.host.command.chain();
-      const editorMode = rootComponent.service.docModeService.getMode(
-        rootComponent.doc.id
-      );
+      const docModeService = rootComponent.std.get(DocModeProvider);
+      const editorMode = docModeService.getPrimaryMode(rootComponent.doc.id);
 
       return item?.showWhen?.(chain, editorMode, rootComponent.host) ?? true;
     };

@@ -5,21 +5,27 @@ import {
   Scrollable,
   useConfirmModal,
 } from '@affine/component';
-import { useAsyncCallback } from '@affine/core/hooks/affine-async-hooks';
-import { useNavigateHelper } from '@affine/core/hooks/use-navigate-helper';
-import { track } from '@affine/core/mixpanel';
+import { useAsyncCallback } from '@affine/core/components/hooks/affine-async-hooks';
+import { useNavigateHelper } from '@affine/core/components/hooks/use-navigate-helper';
 import type { Tag } from '@affine/core/modules/tag';
 import { TagService } from '@affine/core/modules/tag';
 import { isNewTabTrigger } from '@affine/core/utils';
 import type { Collection } from '@affine/env/filter';
 import { useI18n } from '@affine/i18n';
+import { track } from '@affine/track';
+import type { DocMode } from '@blocksuite/blocks';
 import {
   ArrowDownSmallIcon,
   SearchIcon,
   ViewLayersIcon,
 } from '@blocksuite/icons/rc';
-import type { Doc as BlockSuiteDoc } from '@blocksuite/store';
-import { useLiveData, useService, WorkspaceService } from '@toeverything/infra';
+import type { DocRecord } from '@toeverything/infra';
+import {
+  useLiveData,
+  useService,
+  useServices,
+  WorkspaceService,
+} from '@toeverything/infra';
 import clsx from 'clsx';
 import { nanoid } from 'nanoid';
 import { useCallback, useMemo, useState } from 'react';
@@ -38,7 +44,11 @@ import { PageListNewPageButton } from './page-list-new-page-button';
 
 export const PageListHeader = () => {
   const t = useI18n();
-  const workspace = useService(WorkspaceService).workspace;
+  const { workspaceService } = useServices({
+    WorkspaceService,
+  });
+
+  const workspace = workspaceService.workspace;
   const { importFile, createEdgeless, createPage } = usePageHelper(
     workspace.docCollection
   );
@@ -69,7 +79,12 @@ export const PageListHeader = () => {
         onCreateEdgeless={e =>
           createEdgeless(isNewTabTrigger(e) ? 'new-tab' : true)
         }
-        onCreatePage={e => createPage(isNewTabTrigger(e) ? 'new-tab' : true)}
+        onCreatePage={e =>
+          createPage('page' as DocMode, isNewTabTrigger(e) ? 'new-tab' : true)
+        }
+        onCreateDoc={e =>
+          createPage(undefined, isNewTabTrigger(e) ? 'new-tab' : true)
+        }
         onImportFile={onImportFile}
       >
         <div className={styles.buttonText}>{t['New Page']()}</div>
@@ -86,25 +101,28 @@ export const CollectionPageListHeader = ({
 }) => {
   const t = useI18n();
   const { jumpToCollections } = useNavigateHelper();
+  const { collectionService, workspaceService } = useServices({
+    CollectionService,
+    WorkspaceService,
+  });
 
   const handleJumpToCollections = useCallback(() => {
     jumpToCollections(workspaceId);
   }, [jumpToCollections, workspaceId]);
 
-  const collectionService = useService(CollectionService);
-  const { node, open } = useEditCollection();
+  const { open } = useEditCollection();
 
   const handleEdit = useAsyncCallback(async () => {
     const ret = await open({ ...collection }, 'page');
     collectionService.updateCollection(collection.id, () => ret);
   }, [collection, collectionService, open]);
 
-  const workspace = useService(WorkspaceService).workspace;
+  const workspace = workspaceService.workspace;
   const { createEdgeless, createPage } = usePageHelper(workspace.docCollection);
   const { openConfirmModal } = useConfirmModal();
 
   const createAndAddDocument = useCallback(
-    (createDocumentFn: () => BlockSuiteDoc) => {
+    (createDocumentFn: () => DocRecord) => {
       const newDoc = createDocumentFn();
       collectionService.addPageToCollection(collection.id, newDoc.id);
     },
@@ -112,7 +130,7 @@ export const CollectionPageListHeader = ({
   );
 
   const onConfirmAddDocument = useCallback(
-    (createDocumentFn: () => BlockSuiteDoc) => {
+    (createDocumentFn: () => DocRecord) => {
       openConfirmModal({
         title: t['com.affine.collection.add-doc.confirm.title'](),
         description: t['com.affine.collection.add-doc.confirm.description'](),
@@ -127,41 +145,46 @@ export const CollectionPageListHeader = ({
     [openConfirmModal, t, createAndAddDocument]
   );
 
+  const createPageModeDoc = useCallback(
+    () => createPage('page' as DocMode),
+    [createPage]
+  );
+
   const onCreateEdgeless = useCallback(
     () => onConfirmAddDocument(createEdgeless),
     [createEdgeless, onConfirmAddDocument]
   );
-  const onCreatePage = useCallback(
-    () => onConfirmAddDocument(createPage),
-    [createPage, onConfirmAddDocument]
-  );
+  const onCreatePage = useCallback(() => {
+    onConfirmAddDocument(createPageModeDoc);
+  }, [createPageModeDoc, onConfirmAddDocument]);
+  const onCreateDoc = useCallback(() => {
+    onConfirmAddDocument(createPage);
+  }, [createPage, onConfirmAddDocument]);
 
   return (
-    <>
-      {node}
-      <div className={styles.docListHeader}>
-        <div className={styles.docListHeaderTitle}>
-          <div style={{ cursor: 'pointer' }} onClick={handleJumpToCollections}>
-            {t['com.affine.collections.header']()} /
-          </div>
-          <div className={styles.titleIcon}>
-            <ViewLayersIcon />
-          </div>
-          <div className={styles.titleCollectionName}>{collection.name}</div>
+    <div className={styles.docListHeader}>
+      <div className={styles.docListHeaderTitle}>
+        <div style={{ cursor: 'pointer' }} onClick={handleJumpToCollections}>
+          {t['com.affine.collections.header']()} /
         </div>
-        <div className={styles.rightButtonGroup}>
-          <Button onClick={handleEdit}>{t['Edit']()}</Button>
-          <PageListNewPageButton
-            size="small"
-            testId="new-page-button-trigger"
-            onCreateEdgeless={onCreateEdgeless}
-            onCreatePage={onCreatePage}
-          >
-            <div className={styles.buttonText}>{t['New Page']()}</div>
-          </PageListNewPageButton>
+        <div className={styles.titleIcon}>
+          <ViewLayersIcon />
         </div>
+        <div className={styles.titleCollectionName}>{collection.name}</div>
       </div>
-    </>
+      <div className={styles.rightButtonGroup}>
+        <Button onClick={handleEdit}>{t['Edit']()}</Button>
+        <PageListNewPageButton
+          size="small"
+          testId="new-page-button-trigger"
+          onCreateDoc={onCreateDoc}
+          onCreateEdgeless={onCreateEdgeless}
+          onCreatePage={onCreatePage}
+        >
+          <div className={styles.buttonText}>{t['New Page']()}</div>
+        </PageListNewPageButton>
+      </div>
+    </div>
   );
 };
 
@@ -179,7 +202,7 @@ export const TagPageListHeader = ({
   const { jumpToTags, jumpToCollection } = useNavigateHelper();
   const collectionService = useService(CollectionService);
   const [openMenu, setOpenMenu] = useState(false);
-  const { open, node } = useEditCollectionName({
+  const { open } = useEditCollectionName({
     title: t['com.affine.editCollection.saveCollection'](),
     showTips: true,
   });
@@ -209,47 +232,44 @@ export const TagPageListHeader = ({
   }, [open, saveToCollection]);
 
   return (
-    <>
-      {node}
-      <div className={styles.docListHeader}>
-        <div className={styles.docListHeaderTitle}>
-          <div
-            style={{ cursor: 'pointer', lineHeight: '1.4em' }}
-            onClick={handleJumpToTags}
-          >
-            {t['Tags']()} /
-          </div>
-          <Menu
-            rootOptions={{
-              open: openMenu,
-              onOpenChange: setOpenMenu,
-            }}
-            contentOptions={{
-              side: 'bottom',
-              align: 'start',
-              sideOffset: 18,
-              avoidCollisions: false,
-              className: styles.tagsMenu,
-            }}
-            items={<SwitchTag onClick={setOpenMenu} />}
-          >
-            <div className={styles.tagSticky}>
-              <div
-                className={styles.tagIndicator}
-                style={{
-                  backgroundColor: tagColor,
-                }}
-              />
-              <div className={styles.tagLabel}>{tagTitle}</div>
-              <ArrowDownSmallIcon className={styles.arrowDownSmallIcon} />
-            </div>
-          </Menu>
+    <div className={styles.docListHeader}>
+      <div className={styles.docListHeaderTitle}>
+        <div
+          style={{ cursor: 'pointer', lineHeight: '1.4em' }}
+          onClick={handleJumpToTags}
+        >
+          {t['Tags']()} /
         </div>
-        <Button onClick={handleClick}>
-          {t['com.affine.editCollection.saveCollection']()}
-        </Button>
+        <Menu
+          rootOptions={{
+            open: openMenu,
+            onOpenChange: setOpenMenu,
+          }}
+          contentOptions={{
+            side: 'bottom',
+            align: 'start',
+            sideOffset: 18,
+            avoidCollisions: false,
+            className: styles.tagsMenu,
+          }}
+          items={<SwitchTag onClick={setOpenMenu} />}
+        >
+          <div className={styles.tagSticky}>
+            <div
+              className={styles.tagIndicator}
+              style={{
+                backgroundColor: tagColor,
+              }}
+            />
+            <div className={styles.tagLabel}>{tagTitle}</div>
+            <ArrowDownSmallIcon className={styles.arrowDownSmallIcon} />
+          </div>
+        </Menu>
       </div>
-    </>
+      <Button onClick={handleClick}>
+        {t['com.affine.editCollection.saveCollection']()}
+      </Button>
+    </div>
   );
 };
 

@@ -1,10 +1,9 @@
+import type { DocMode } from '@blocksuite/blocks';
 import type { DocMeta } from '@blocksuite/store';
 
 import { Entity } from '../../../framework';
 import { LiveData } from '../../../livedata';
 import type { DocsStore } from '../stores/docs';
-
-export type DocMode = 'edgeless' | 'page';
 
 /**
  * # DocRecord
@@ -26,35 +25,25 @@ export class DocRecord extends Entity<{ id: string }> {
     this.docsStore.setDocMeta(this.id, meta);
   }
 
-  mode$: LiveData<DocMode> = LiveData.from(
-    this.docsStore.watchDocModeSetting(this.id),
-    'page'
-  ).map(mode => (mode === 'edgeless' ? 'edgeless' : 'page'));
+  primaryMode$: LiveData<DocMode> = LiveData.from(
+    this.docsStore.watchDocPrimaryModeSetting(this.id),
+    'page' as DocMode
+  ).map(mode => (mode === 'edgeless' ? 'edgeless' : 'page') as DocMode);
 
-  setMode(mode: DocMode) {
-    return this.docsStore.setDocModeSetting(this.id, mode);
+  setPrimaryMode(mode: DocMode) {
+    return this.docsStore.setDocPrimaryModeSetting(this.id, mode);
   }
 
-  getMode() {
-    return this.docsStore.getDocModeSetting(this.id);
-  }
-
-  toggleMode() {
-    const mode = this.getMode() === 'edgeless' ? 'page' : 'edgeless';
-    this.setMode(mode);
-    return this.getMode();
-  }
-
-  observeMode() {
-    return this.docsStore.watchDocModeSetting(this.id);
+  getPrimaryMode() {
+    return this.docsStore.getDocPrimaryModeSetting(this.id);
   }
 
   moveToTrash() {
-    return this.setMeta({ trash: true });
+    return this.setMeta({ trash: true, trashDate: Date.now() });
   }
 
   restoreFromTrash() {
-    return this.setMeta({ trash: false });
+    return this.setMeta({ trash: false, trashDate: undefined });
   }
 
   title$ = this.meta$.map(meta => meta.title ?? '');

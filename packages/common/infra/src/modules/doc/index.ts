@@ -1,5 +1,4 @@
 export { Doc } from './entities/doc';
-export type { DocMode } from './entities/record';
 export { DocRecord } from './entities/record';
 export { DocRecordList } from './entities/record-list';
 export { DocScope } from './scopes/doc';
@@ -28,6 +27,6 @@ export function configureDocModule(framework: Framework) {
     .entity(DocRecord, [DocsStore])
     .entity(DocRecordList, [DocsStore])
     .scope(DocScope)
-    .entity(Doc, [DocScope, DocsStore])
+    .entity(Doc, [DocScope, DocsStore, WorkspaceService])
     .service(DocService);
 }

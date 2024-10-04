@@ -1,6 +1,6 @@
 import { toast } from '@affine/component';
 import { Button, IconButton } from '@affine/component/ui/button';
-import { useAsyncCallback } from '@affine/core/hooks/affine-async-hooks';
+import { useAsyncCallback } from '@affine/core/components/hooks/affine-async-hooks';
 import type { ImageBlockModel } from '@blocksuite/blocks';
 import { assertExists } from '@blocksuite/global/utils';
 import {
@@ -33,7 +33,7 @@ import { ErrorBoundary } from 'react-error-boundary';
 import useSWR from 'swr';
 
 import { PeekViewService } from '../../services/peek-view';
-import { useDoc } from '../utils';
+import { useEditor } from '../utils';
 import { useZoomControls } from './hooks/use-zoom';
 import * as styles from './index.css';
 
@@ -108,7 +108,7 @@ const ImagePreviewModalImpl = ({
   onBlockIdChange: (blockId: string) => void;
   onClose: () => void;
 }): ReactElement | null => {
-  const { doc, workspace } = useDoc(docId);
+  const { doc, workspace } = useEditor(docId);
   const blocksuiteDoc = doc?.blockSuiteDoc;
   const docCollection = workspace.docCollection;
   const blockModel = useMemo(() => {
@@ -265,11 +265,20 @@ const ImagePreviewModalImpl = ({
       event.stopPropagation();
     };
 
+    const onCopyEvent = (event: ClipboardEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      copyHandler();
+    };
+
     document.addEventListener('keyup', handleKeyUp);
+    document.addEventListener('copy', onCopyEvent);
     return () => {
       document.removeEventListener('keyup', handleKeyUp);
+      document.removeEventListener('copy', onCopyEvent);
     };
-  }, [blockModel, blocksuiteDoc, onBlockIdChange]);
+  }, [blockModel, blocksuiteDoc, copyHandler, onBlockIdChange]);
 
   useErrorBoundary(error);
 
@@ -308,6 +317,7 @@ const ImagePreviewModalImpl = ({
               data-testid="image-content"
               src={url}
               alt={caption}
+              tabIndex={0}
               ref={imageRef}
               draggable={isZoomedBigger}
               onMouseDown={handleDragStart}

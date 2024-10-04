@@ -6,16 +6,16 @@ export const root = style({
   background: cssVarV2('button/siderbarPrimary/background'),
   alignItems: 'center',
   borderRadius: '8px',
-  border: `1px solid ${cssVarV2('layer/border')}`,
+  border: `1px solid ${cssVarV2('layer/insideBorder/border')}`,
   fontSize: cssVar('fontSm'),
   width: '100%',
   height: '36px',
   userSelect: 'none',
   cursor: 'pointer',
   padding: '0 12px',
-  margin: '20px 0',
   position: 'relative',
   whiteSpace: 'nowrap',
+  overflow: 'hidden',
 });
 export const icon = style({
   marginRight: '8px',
@@ -28,4 +28,9 @@ export const spacer = style({
 export const shortcutHint = style({
   color: cssVarV2('text/tertiary'),
   fontSize: cssVar('fontBase'),
+});
+export const quickSearchBarEllipsisStyle = style({
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
 });

@@ -3,11 +3,16 @@ import { configureInfraModules, type Framework } from '@toeverything/infra';
 
 import { configureCloudModule } from './cloud';
 import { configureCollectionModule } from './collection';
+import { configureCreateWorkspaceModule } from './create-workspace';
+import { configureDocDisplayMetaModule } from './doc-display-meta';
 import { configureDocLinksModule } from './doc-link';
 import { configureDocsSearchModule } from './docs-search';
+import { configureEditorModule } from './editor';
+import { configureEditorSettingModule } from './editor-settting';
 import { configureExplorerModule } from './explorer';
 import { configureFavoriteModule } from './favorite';
 import { configureFindInPageModule } from './find-in-page';
+import { configureImportTemplateModule } from './import-template';
 import { configureNavigationModule } from './navigation';
 import { configureOrganizeModule } from './organize';
 import { configurePeekViewModule } from './peek-view';
@@ -15,9 +20,12 @@ import { configurePermissionsModule } from './permissions';
 import { configureWorkspacePropertiesModule } from './properties';
 import { configureQuickSearchModule } from './quicksearch';
 import { configureShareDocsModule } from './share-doc';
+import { configureShareSettingModule } from './share-setting';
+import { configureSystemFontFamilyModule } from './system-font-family';
 import { configureTagModule } from './tag';
 import { configureTelemetryModule } from './telemetry';
 import { configureThemeEditorModule } from './theme-editor';
+import { configureUserspaceModule } from './userspace';
 
 export function configureCommonModules(framework: Framework) {
   configureInfraModules(framework);
@@ -29,9 +37,11 @@ export function configureCommonModules(framework: Framework) {
   configureQuotaModule(framework);
   configurePermissionsModule(framework);
   configureShareDocsModule(framework);
+  configureShareSettingModule(framework);
   configureTelemetryModule(framework);
   configureFindInPageModule(framework);
   configurePeekViewModule(framework);
+  configureDocDisplayMetaModule(framework);
   configureQuickSearchModule(framework);
   configureDocsSearchModule(framework);
   configureDocLinksModule(framework);
@@ -39,4 +49,10 @@ export function configureCommonModules(framework: Framework) {
   configureFavoriteModule(framework);
   configureExplorerModule(framework);
   configureThemeEditorModule(framework);
+  configureEditorModule(framework);
+  configureSystemFontFamilyModule(framework);
+  configureEditorSettingModule(framework);
+  configureImportTemplateModule(framework);
+  configureCreateWorkspaceModule(framework);
+  configureUserspaceModule(framework);
 }
