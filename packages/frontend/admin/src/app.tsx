@@ -1,5 +1,4 @@
 import { Toaster } from '@affine/admin/components/ui/sonner';
-import { Telemetry } from '@affine/core/telemetry';
 import { wrapCreateBrowserRouter } from '@sentry/react';
 import { useEffect } from 'react';
 import {
@@ -48,7 +47,7 @@ function RootRoutes() {
   const config = useServerConfig();
   const location = useLocation();
 
-  if (!config.initialized) {
+  if (!config.initialized && location.pathname !== '/admin/setup') {
     return <Navigate to="/admin/setup" />;
   }
 
@@ -91,7 +90,12 @@ export const router = _createBrowserRouter(
             },
             {
               path: 'settings',
-              lazy: () => import('./modules/settings'),
+              children: [
+                {
+                  path: '*',
+                  lazy: () => import('./modules/settings'),
+                },
+              ],
             },
           ],
         },
@@ -108,7 +112,6 @@ export const router = _createBrowserRouter(
 export const App = () => {
   return (
     <TooltipProvider>
-      <Telemetry />
       <SWRConfig
         value={{
           revalidateOnFocus: false,

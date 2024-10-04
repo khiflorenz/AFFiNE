@@ -5,7 +5,7 @@ import type { Awareness } from 'y-protocols/awareness.js';
 
 import { Entity } from '../../../framework';
 import { LiveData } from '../../../livedata';
-import { globalBlockSuiteSchema } from '../global-schema';
+import { getAFFiNEWorkspaceSchema } from '../global-schema';
 import type { WorkspaceScope } from '../scopes/workspace';
 import { WorkspaceEngineService } from '../services/engine';
 import { WorkspaceUpgradeService } from '../services/upgrade';
@@ -33,9 +33,10 @@ export class Workspace extends Entity {
           main: this.engine.blob,
         },
         idGenerator: () => nanoid(),
-        schema: globalBlockSuiteSchema,
-        disableBacklinkIndex: true,
-        disableSearchIndex: true,
+        schema: getAFFiNEWorkspaceSchema(),
+      });
+      this._docCollection.slots.docCreated.on(id => {
+        this.engine.doc.markAsReady(id);
       });
     }
     return this._docCollection;
@@ -60,10 +61,6 @@ export class Workspace extends Entity {
 
   get upgrade() {
     return this.framework.get(WorkspaceUpgradeService).upgrade;
-  }
-
-  get flavourProvider() {
-    return this.scope.props.flavourProvider;
   }
 
   name$ = LiveData.from<string | undefined>(

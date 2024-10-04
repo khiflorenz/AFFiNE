@@ -1,7 +1,7 @@
-import { type EditorHost, WithDisposable } from '@blocksuite/block-std';
-import type {
-  AffineAIPanelState,
-  AffineAIPanelWidgetConfig,
+import { BlockStdScope, type EditorHost } from '@blocksuite/block-std';
+import {
+  type AffineAIPanelState,
+  type AffineAIPanelWidgetConfig,
 } from '@blocksuite/blocks';
 import {
   CodeBlockComponent,
@@ -9,9 +9,10 @@ import {
   ListBlockComponent,
   ParagraphBlockComponent,
 } from '@blocksuite/blocks';
+import { WithDisposable } from '@blocksuite/global/utils';
 import { BlockViewType, type Doc, type Query } from '@blocksuite/store';
 import { css, html, LitElement, type PropertyValues } from 'lit';
-import { customElement, property, query } from 'lit/decorators.js';
+import { property, query } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { keyed } from 'lit/directives/keyed.js';
 
@@ -71,7 +72,6 @@ type TextRendererOptions = {
   customHeading?: boolean;
 };
 
-@customElement('ai-answer-text')
 export class AIAnswerText extends WithDisposable(LitElement) {
   static override styles = css`
     .ai-answer-text-editor.affine-page-viewport {
@@ -271,7 +271,10 @@ export class AIAnswerText extends WithDisposable(LitElement) {
         ${keyed(
           this._doc,
           html`<div class="ai-answer-text-editor affine-page-viewport">
-            ${this.host.renderSpecPortal(this._doc, CustomPageEditorBlockSpecs)}
+            ${new BlockStdScope({
+              doc: this._doc,
+              extensions: CustomPageEditorBlockSpecs,
+            }).render()}
           </div>`
         )}
       </div>

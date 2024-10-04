@@ -2,23 +2,19 @@ import { Loading, Scrollable, Avatar } from '@affine/component';
 import { EditorLoading } from '@affine/component/page-detail-skeleton';
 import { Button, IconButton } from '@affine/component/ui/button';
 import { Modal, useConfirmModal } from '@affine/component/ui/modal';
-import { openSettingModalAtom } from '@affine/core/atoms';
-import { useDocCollectionPageTitle } from '@affine/core/hooks/use-block-suite-workspace-page-title';
-import { track } from '@affine/core/mixpanel';
+import { openSettingModalAtom } from '@affine/core/components/atoms';
+import { useDocCollectionPageTitle } from '@affine/core/components/hooks/use-block-suite-workspace-page-title';
+import { EditorService } from '@affine/core/modules/editor';
 import { WorkspacePermissionService } from '@affine/core/modules/permissions';
 import { WorkspaceQuotaService } from '@affine/core/modules/quota';
 import { i18nTime, Trans, useI18n } from '@affine/i18n';
+import { track } from '@affine/track';
+import type { DocMode } from '@blocksuite/blocks';
 import { CloseIcon, ToggleCollapseIcon } from '@blocksuite/icons/rc';
 import type { Doc as BlockSuiteDoc, DocCollection } from '@blocksuite/store';
 import * as Collapsible from '@radix-ui/react-collapsible';
 import type { DialogContentProps } from '@radix-ui/react-dialog';
-import {
-  type DocMode,
-  DocService,
-  useLiveData,
-  useService,
-  WorkspaceService,
-} from '@toeverything/infra';
+import { useLiveData, useService, WorkspaceService } from '@toeverything/infra';
 import { atom, useAtom, useSetAtom } from 'jotai';
 import type { PropsWithChildren } from 'react';
 import {
@@ -32,7 +28,7 @@ import {
 } from 'react';
 import { encodeStateAsUpdate } from 'yjs';
 
-import { pageHistoryModalAtom } from '../../../atoms/page-history';
+import { pageHistoryModalAtom } from '../../atoms/page-history';
 import { BlockSuiteEditor } from '../../blocksuite/block-suite-editor';
 import { PureEditorModeSwitch } from '../../blocksuite/block-suite-mode-switch';
 import { AffineErrorBoundary } from '../affine-error-boundary';
@@ -343,19 +339,19 @@ const PageHistoryList = ({
                           }}
                           data-active={activeVersion === history.timestamp}
                         >
-                          {history.createdByUser
+                          {history.editor
                             ? (
                                 <button className={styles.historyItemButton}>
                                   <div className={styles.historyItemAvatar}>
                                     <Avatar
                                       size={24}
-                                      name={history.createdByUser.name}
-                                      url={history.createdByUser.avatarUrl}
+                                      name={history.editor.name}
+                                      url={history.editor.avatarUrl}
                                     />
                                   </div>
                                   <div className={styles.historyItemInfos}>
                                     <p className={styles.historyItemInfoTitle}>
-                                      {history.createdByUser.name}
+                                      {history.editor.name}
                                     </p>
                                     <span className={styles.historyItemInfoSubTitle}>
                                       {i18nTime(history.timestamp, {
@@ -457,8 +453,8 @@ const PageHistoryManager = ({
     [activeVersion, onClose, onRestore, snapshotPage]
   );
 
-  const doc = useService(DocService).doc;
-  const [mode, setMode] = useState<DocMode>(doc.mode$.value);
+  const editor = useService(EditorService).editor;
+  const [mode, setMode] = useState<DocMode>(editor.mode$.value);
 
   const title = useDocCollectionPageTitle(docCollection, pageId);
 

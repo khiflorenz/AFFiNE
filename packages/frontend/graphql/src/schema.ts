@@ -38,10 +38,15 @@ export interface Scalars {
   Upload: { input: File; output: File };
 }
 
+export interface AlreadyInSpaceDataType {
+  __typename?: 'AlreadyInSpaceDataType';
+  spaceId: Scalars['String']['output'];
+}
+
 export interface BlobNotFoundDataType {
   __typename?: 'BlobNotFoundDataType';
   blobId: Scalars['String']['output'];
-  workspaceId: Scalars['String']['output'];
+  spaceId: Scalars['String']['output'];
 }
 
 export enum ChatHistoryOrder {
@@ -221,18 +226,19 @@ export interface DeleteSessionInput {
 export interface DocAccessDeniedDataType {
   __typename?: 'DocAccessDeniedDataType';
   docId: Scalars['String']['output'];
-  workspaceId: Scalars['String']['output'];
+  spaceId: Scalars['String']['output'];
 }
 
 export interface DocHistoryNotFoundDataType {
   __typename?: 'DocHistoryNotFoundDataType';
   docId: Scalars['String']['output'];
+  spaceId: Scalars['String']['output'];
   timestamp: Scalars['Int']['output'];
-  workspaceId: Scalars['String']['output'];
 }
 
 export interface DocHistoryType {
   __typename?: 'DocHistoryType';
+  editor: Maybe<EditorType>;
   id: Scalars['String']['output'];
   timestamp: Scalars['DateTime']['output'];
   workspaceId: Scalars['String']['output'];
@@ -241,10 +247,17 @@ export interface DocHistoryType {
 export interface DocNotFoundDataType {
   __typename?: 'DocNotFoundDataType';
   docId: Scalars['String']['output'];
-  workspaceId: Scalars['String']['output'];
+  spaceId: Scalars['String']['output'];
+}
+
+export interface EditorType {
+  __typename?: 'EditorType';
+  avatarUrl: Maybe<Scalars['String']['output']>;
+  name: Scalars['String']['output'];
 }
 
 export type ErrorDataUnion =
+  | AlreadyInSpaceDataType
   | BlobNotFoundDataType
   | CopilotMessageNotFoundDataType
   | CopilotPromptNotFoundDataType
@@ -256,28 +269,30 @@ export type ErrorDataUnion =
   | InvalidPasswordLengthDataType
   | InvalidRuntimeConfigTypeDataType
   | MissingOauthQueryParameterDataType
-  | NotInWorkspaceDataType
+  | NotInSpaceDataType
   | RuntimeConfigNotFoundDataType
   | SameSubscriptionRecurringDataType
+  | SpaceAccessDeniedDataType
+  | SpaceNotFoundDataType
+  | SpaceOwnerNotFoundDataType
   | SubscriptionAlreadyExistsDataType
   | SubscriptionNotExistsDataType
   | SubscriptionPlanNotFoundDataType
   | UnknownOauthProviderDataType
-  | VersionRejectedDataType
-  | WorkspaceAccessDeniedDataType
-  | WorkspaceNotFoundDataType
-  | WorkspaceOwnerNotFoundDataType;
+  | VersionRejectedDataType;
 
 export enum ErrorNames {
   ACCESS_DENIED = 'ACCESS_DENIED',
   ACTION_FORBIDDEN = 'ACTION_FORBIDDEN',
+  ALREADY_IN_SPACE = 'ALREADY_IN_SPACE',
   AUTHENTICATION_REQUIRED = 'AUTHENTICATION_REQUIRED',
   BLOB_NOT_FOUND = 'BLOB_NOT_FOUND',
   BLOB_QUOTA_EXCEEDED = 'BLOB_QUOTA_EXCEEDED',
   CANNOT_DELETE_ALL_ADMIN_ACCOUNT = 'CANNOT_DELETE_ALL_ADMIN_ACCOUNT',
   CANNOT_DELETE_OWN_ACCOUNT = 'CANNOT_DELETE_OWN_ACCOUNT',
-  CANT_CHANGE_WORKSPACE_OWNER = 'CANT_CHANGE_WORKSPACE_OWNER',
+  CANT_CHANGE_SPACE_OWNER = 'CANT_CHANGE_SPACE_OWNER',
   CANT_UPDATE_LIFETIME_SUBSCRIPTION = 'CANT_UPDATE_LIFETIME_SUBSCRIPTION',
+  CAPTCHA_VERIFICATION_FAILED = 'CAPTCHA_VERIFICATION_FAILED',
   COPILOT_ACTION_TAKEN = 'COPILOT_ACTION_TAKEN',
   COPILOT_FAILED_TO_CREATE_MESSAGE = 'COPILOT_FAILED_TO_CREATE_MESSAGE',
   COPILOT_FAILED_TO_GENERATE_TEXT = 'COPILOT_FAILED_TO_GENERATE_TEXT',
@@ -299,6 +314,8 @@ export enum ErrorNames {
   EXPECT_TO_PUBLISH_PAGE = 'EXPECT_TO_PUBLISH_PAGE',
   EXPECT_TO_REVOKE_PUBLIC_PAGE = 'EXPECT_TO_REVOKE_PUBLIC_PAGE',
   FAILED_TO_CHECKOUT = 'FAILED_TO_CHECKOUT',
+  FAILED_TO_SAVE_UPDATES = 'FAILED_TO_SAVE_UPDATES',
+  FAILED_TO_UPSERT_SNAPSHOT = 'FAILED_TO_UPSERT_SNAPSHOT',
   INTERNAL_SERVER_ERROR = 'INTERNAL_SERVER_ERROR',
   INVALID_EMAIL = 'INVALID_EMAIL',
   INVALID_EMAIL_TOKEN = 'INVALID_EMAIL_TOKEN',
@@ -310,7 +327,8 @@ export enum ErrorNames {
   MAILER_SERVICE_IS_NOT_CONFIGURED = 'MAILER_SERVICE_IS_NOT_CONFIGURED',
   MEMBER_QUOTA_EXCEEDED = 'MEMBER_QUOTA_EXCEEDED',
   MISSING_OAUTH_QUERY_PARAMETER = 'MISSING_OAUTH_QUERY_PARAMETER',
-  NOT_IN_WORKSPACE = 'NOT_IN_WORKSPACE',
+  NOT_FOUND = 'NOT_FOUND',
+  NOT_IN_SPACE = 'NOT_IN_SPACE',
   NO_COPILOT_PROVIDER_AVAILABLE = 'NO_COPILOT_PROVIDER_AVAILABLE',
   OAUTH_ACCOUNT_ALREADY_CONNECTED = 'OAUTH_ACCOUNT_ALREADY_CONNECTED',
   OAUTH_STATE_EXPIRED = 'OAUTH_STATE_EXPIRED',
@@ -320,6 +338,9 @@ export enum ErrorNames {
   SAME_EMAIL_PROVIDED = 'SAME_EMAIL_PROVIDED',
   SAME_SUBSCRIPTION_RECURRING = 'SAME_SUBSCRIPTION_RECURRING',
   SIGN_UP_FORBIDDEN = 'SIGN_UP_FORBIDDEN',
+  SPACE_ACCESS_DENIED = 'SPACE_ACCESS_DENIED',
+  SPACE_NOT_FOUND = 'SPACE_NOT_FOUND',
+  SPACE_OWNER_NOT_FOUND = 'SPACE_OWNER_NOT_FOUND',
   SUBSCRIPTION_ALREADY_EXISTS = 'SUBSCRIPTION_ALREADY_EXISTS',
   SUBSCRIPTION_EXPIRED = 'SUBSCRIPTION_EXPIRED',
   SUBSCRIPTION_HAS_BEEN_CANCELED = 'SUBSCRIPTION_HAS_BEEN_CANCELED',
@@ -331,9 +352,6 @@ export enum ErrorNames {
   USER_AVATAR_NOT_FOUND = 'USER_AVATAR_NOT_FOUND',
   USER_NOT_FOUND = 'USER_NOT_FOUND',
   VERSION_REJECTED = 'VERSION_REJECTED',
-  WORKSPACE_ACCESS_DENIED = 'WORKSPACE_ACCESS_DENIED',
-  WORKSPACE_NOT_FOUND = 'WORKSPACE_NOT_FOUND',
-  WORKSPACE_OWNER_NOT_FOUND = 'WORKSPACE_OWNER_NOT_FOUND',
   WRONG_SIGN_IN_CREDENTIALS = 'WRONG_SIGN_IN_CREDENTIALS',
   WRONG_SIGN_IN_METHOD = 'WRONG_SIGN_IN_METHOD',
 }
@@ -748,9 +766,9 @@ export interface MutationVerifyEmailArgs {
   token: Scalars['String']['input'];
 }
 
-export interface NotInWorkspaceDataType {
-  __typename?: 'NotInWorkspaceDataType';
-  workspaceId: Scalars['String']['output'];
+export interface NotInSpaceDataType {
+  __typename?: 'NotInSpaceDataType';
+  spaceId: Scalars['String']['output'];
 }
 
 export enum OAuthProviderType {
@@ -883,6 +901,7 @@ export interface QuotaQueryType {
   copilotActionLimit: Maybe<Scalars['SafeInt']['output']>;
   historyPeriod: Scalars['SafeInt']['output'];
   humanReadable: HumanReadableQuotaType;
+  memberCount: Scalars['SafeInt']['output'];
   memberLimit: Scalars['SafeInt']['output'];
   name: Scalars['String']['output'];
   storageQuota: Scalars['SafeInt']['output'];
@@ -948,6 +967,7 @@ export enum ServerDeploymentType {
 }
 
 export enum ServerFeature {
+  Captcha = 'Captcha',
   Copilot = 'Copilot',
   OAuth = 'OAuth',
   Payment = 'Payment',
@@ -974,6 +994,21 @@ export interface ServerServiceConfig {
   __typename?: 'ServerServiceConfig';
   config: Scalars['JSONObject']['output'];
   name: Scalars['String']['output'];
+}
+
+export interface SpaceAccessDeniedDataType {
+  __typename?: 'SpaceAccessDeniedDataType';
+  spaceId: Scalars['String']['output'];
+}
+
+export interface SpaceNotFoundDataType {
+  __typename?: 'SpaceNotFoundDataType';
+  spaceId: Scalars['String']['output'];
+}
+
+export interface SpaceOwnerNotFoundDataType {
+  __typename?: 'SpaceOwnerNotFoundDataType';
+  spaceId: Scalars['String']['output'];
 }
 
 export interface SubscriptionAlreadyExistsDataType {
@@ -1039,6 +1074,8 @@ export interface UpdateUserInput {
 }
 
 export interface UpdateWorkspaceInput {
+  /** Enable url previous when sharing */
+  enableUrlPreview: InputMaybe<Scalars['Boolean']['input']>;
   id: Scalars['ID']['input'];
   /** is Public workspace */
   public: InputMaybe<Scalars['Boolean']['input']>;
@@ -1128,7 +1165,7 @@ export interface UserType {
   /** @deprecated use `UserType.subscriptions` */
   subscription: Maybe<UserSubscription>;
   subscriptions: Array<UserSubscription>;
-  /** @deprecated use [/api/auth/authorize] */
+  /** @deprecated use [/api/auth/sign-in?native=true] instead */
   token: TokenType;
 }
 
@@ -1151,24 +1188,9 @@ export interface VersionRejectedDataType {
   version: Scalars['String']['output'];
 }
 
-export interface WorkspaceAccessDeniedDataType {
-  __typename?: 'WorkspaceAccessDeniedDataType';
-  workspaceId: Scalars['String']['output'];
-}
-
 export interface WorkspaceBlobSizes {
   __typename?: 'WorkspaceBlobSizes';
   size: Scalars['SafeInt']['output'];
-}
-
-export interface WorkspaceNotFoundDataType {
-  __typename?: 'WorkspaceNotFoundDataType';
-  workspaceId: Scalars['String']['output'];
-}
-
-export interface WorkspaceOwnerNotFoundDataType {
-  __typename?: 'WorkspaceOwnerNotFoundDataType';
-  workspaceId: Scalars['String']['output'];
 }
 
 export interface WorkspacePage {
@@ -1177,6 +1199,14 @@ export interface WorkspacePage {
   mode: PublicPageMode;
   public: Scalars['Boolean']['output'];
   workspaceId: Scalars['String']['output'];
+}
+
+export interface WorkspacePageMeta {
+  __typename?: 'WorkspacePageMeta';
+  createdAt: Scalars['DateTime']['output'];
+  createdBy: Maybe<EditorType>;
+  updatedAt: Scalars['DateTime']['output'];
+  updatedBy: Maybe<EditorType>;
 }
 
 export interface WorkspaceType {
@@ -1189,16 +1219,22 @@ export interface WorkspaceType {
   blobsSize: Scalars['Int']['output'];
   /** Workspace created date */
   createdAt: Scalars['DateTime']['output'];
+  /** Enable url previous when sharing */
+  enableUrlPreview: Scalars['Boolean']['output'];
   /** Enabled features of workspace */
   features: Array<FeatureType>;
   histories: Array<DocHistoryType>;
   id: Scalars['ID']['output'];
+  /** is current workspace initialized */
+  initialized: Scalars['Boolean']['output'];
   /** member count of workspace */
   memberCount: Scalars['Int']['output'];
   /** Members of workspace */
   members: Array<InviteUserType>;
   /** Owner of workspace */
   owner: UserType;
+  /** Cloud page metadata of workspace */
+  pageMeta: WorkspacePageMeta;
   /** Permission of current signed in user in workspace */
   permission: Permission;
   /** is Public workspace */
@@ -1225,6 +1261,10 @@ export interface WorkspaceTypeHistoriesArgs {
 export interface WorkspaceTypeMembersArgs {
   skip: InputMaybe<Scalars['Int']['input']>;
   take: InputMaybe<Scalars['Int']['input']>;
+}
+
+export interface WorkspaceTypePageMetaArgs {
+  pageId: Scalars['String']['input'];
 }
 
 export interface WorkspaceTypePublicPageArgs {
@@ -1775,6 +1815,33 @@ export type GetWorkspaceFeaturesQuery = {
   workspace: { __typename?: 'WorkspaceType'; features: Array<FeatureType> };
 };
 
+export type GetWorkspacePageMetaByIdQueryVariables = Exact<{
+  id: Scalars['String']['input'];
+  pageId: Scalars['String']['input'];
+}>;
+
+export type GetWorkspacePageMetaByIdQuery = {
+  __typename?: 'Query';
+  workspace: {
+    __typename?: 'WorkspaceType';
+    pageMeta: {
+      __typename?: 'WorkspacePageMeta';
+      createdAt: string;
+      updatedAt: string;
+      createdBy: {
+        __typename?: 'EditorType';
+        name: string;
+        avatarUrl: string | null;
+      } | null;
+      updatedBy: {
+        __typename?: 'EditorType';
+        name: string;
+        avatarUrl: string | null;
+      } | null;
+    };
+  };
+};
+
 export type GetWorkspacePublicByIdQueryVariables = Exact<{
   id: Scalars['String']['input'];
 }>;
@@ -1833,6 +1900,7 @@ export type GetWorkspacesQuery = {
   workspaces: Array<{
     __typename?: 'WorkspaceType';
     id: string;
+    initialized: boolean;
     owner: { __typename?: 'UserType'; id: string };
   }>;
 };
@@ -1852,7 +1920,11 @@ export type ListHistoryQuery = {
       __typename?: 'DocHistoryType';
       id: string;
       timestamp: string;
-      createdByUser: UserType | undefined;
+      editor: {
+        __typename?: 'EditorType';
+        name: string;
+        avatarUrl: string | null;
+      } | null;
     }>;
   };
 };
@@ -1873,6 +1945,7 @@ export type InvoicesQuery = {
   __typename?: 'Query';
   currentUser: {
     __typename?: 'UserType';
+    invoiceCount: number;
     invoices: Array<{
       __typename?: 'UserInvoice';
       id: string;
@@ -2252,6 +2325,25 @@ export type VerifyEmailMutation = {
   verifyEmail: boolean;
 };
 
+export type GetEnableUrlPreviewQueryVariables = Exact<{
+  id: Scalars['String']['input'];
+}>;
+
+export type GetEnableUrlPreviewQuery = {
+  __typename?: 'Query';
+  workspace: { __typename?: 'WorkspaceType'; enableUrlPreview: boolean };
+};
+
+export type SetEnableUrlPreviewMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+  enableUrlPreview: Scalars['Boolean']['input'];
+}>;
+
+export type SetEnableUrlPreviewMutation = {
+  __typename?: 'Mutation';
+  updateWorkspace: { __typename?: 'WorkspaceType'; id: string };
+};
+
 export type EnabledFeaturesQueryVariables = Exact<{
   id: Scalars['String']['input'];
 }>;
@@ -2356,6 +2448,7 @@ export type WorkspaceQuotaQuery = {
       storageQuota: number;
       historyPeriod: number;
       memberLimit: number;
+      memberCount: number;
       usedSize: number;
       humanReadable: {
         __typename?: 'HumanReadableQuotaType';
@@ -2476,6 +2569,11 @@ export type Queries =
       response: GetWorkspaceFeaturesQuery;
     }
   | {
+      name: 'getWorkspacePageMetaByIdQuery';
+      variables: GetWorkspacePageMetaByIdQueryVariables;
+      response: GetWorkspacePageMetaByIdQuery;
+    }
+  | {
       name: 'getWorkspacePublicByIdQuery';
       variables: GetWorkspacePublicByIdQueryVariables;
       response: GetWorkspacePublicByIdQuery;
@@ -2539,6 +2637,11 @@ export type Queries =
       name: 'subscriptionQuery';
       variables: SubscriptionQueryVariables;
       response: SubscriptionQuery;
+    }
+  | {
+      name: 'getEnableUrlPreviewQuery';
+      variables: GetEnableUrlPreviewQueryVariables;
+      response: GetEnableUrlPreviewQuery;
     }
   | {
       name: 'enabledFeaturesQuery';
@@ -2751,6 +2854,11 @@ export type Mutations =
       name: 'verifyEmailMutation';
       variables: VerifyEmailMutationVariables;
       response: VerifyEmailMutation;
+    }
+  | {
+      name: 'setEnableUrlPreviewMutation';
+      variables: SetEnableUrlPreviewMutationVariables;
+      response: SetEnableUrlPreviewMutation;
     }
   | {
       name: 'setWorkspaceExperimentalFeatureMutation';

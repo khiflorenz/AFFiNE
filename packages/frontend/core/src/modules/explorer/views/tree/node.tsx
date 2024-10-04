@@ -5,7 +5,6 @@ import {
   type DropTargetTreeInstruction,
   IconButton,
   Menu,
-  MenuIcon,
   MenuItem,
   useDraggable,
   useDropTarget,
@@ -14,6 +13,7 @@ import { RenameModal } from '@affine/component/rename-modal';
 import { appSidebarWidthAtom } from '@affine/core/components/app-sidebar/index.jotai';
 import { WorkbenchLink } from '@affine/core/modules/workbench';
 import type { AffineDNDData } from '@affine/core/types/dnd';
+import { extractEmojiIcon } from '@affine/core/utils';
 import { useI18n } from '@affine/i18n';
 import {
   ArrowDownSmallIcon,
@@ -37,6 +37,7 @@ import {
   useState,
 } from 'react';
 
+import { ExplorerMobileContext } from '../mobile.context';
 import { ExplorerTreeContext } from './context';
 import { DropEffect } from './drop-effect';
 import * as styles from './node.css';
@@ -59,7 +60,7 @@ export type ExplorerTreeNodeIcon = React.ComponentType<{
 export const ExplorerTreeNode = ({
   children,
   icon: Icon,
-  name,
+  name: rawName,
   onClick,
   to,
   active,
@@ -68,6 +69,7 @@ export const ExplorerTreeNode = ({
   onRename,
   disabled,
   collapsed,
+  extractEmojiAsIcon,
   setCollapsed,
   canDrop,
   reorderable = true,
@@ -87,6 +89,7 @@ export const ExplorerTreeNode = ({
   active?: boolean;
   reorderable?: boolean;
   defaultRenaming?: boolean;
+  extractEmojiAsIcon?: boolean;
   collapsed: boolean;
   setCollapsed: (collapsed: boolean) => void;
   renameable?: boolean;
@@ -106,6 +109,7 @@ export const ExplorerTreeNode = ({
   onDrop?: (data: DropTargetDropEvent<AffineDNDData>) => void;
   dropEffect?: ExplorerTreeNodeDropEffect;
 } & { [key in `data-${string}`]?: any }) => {
+  const mobile = useContext(ExplorerMobileContext);
   const t = useI18n();
   const cid = useId();
   const context = useContext(ExplorerTreeContext);
@@ -117,23 +121,38 @@ export const ExplorerTreeNode = ({
   const [renaming, setRenaming] = useState(defaultRenaming);
   const [lastInGroup, setLastInGroup] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const { emoji, name } = useMemo(() => {
+    if (!extractEmojiAsIcon || !rawName) {
+      return {
+        emoji: null,
+        name: rawName,
+      };
+    }
+    const { emoji, rest } = extractEmojiIcon(rawName);
+    return {
+      emoji,
+      name: rest,
+    };
+  }, [extractEmojiAsIcon, rawName]);
   const { dragRef, dragging, CustomDragPreview } = useDraggable<
     AffineDNDData & { draggable: { __cid: string } }
   >(
     () => ({
+      canDrag: () => !mobile,
       data: { ...dndData?.draggable, __cid: cid },
       dragPreviewPosition: 'pointer-outside',
     }),
-    [cid, dndData]
+    [cid, dndData, mobile]
   );
   const handleCanDrop = useMemo<DropTargetOptions<AffineDNDData>['canDrop']>(
     () => args => {
+      if (mobile) return false;
       if (!reorderable && args.treeInstruction?.type !== 'make-child') {
         return false;
       }
       return (typeof canDrop === 'function' ? canDrop(args) : canDrop) ?? true;
     },
-    [canDrop, reorderable]
+    [canDrop, mobile, reorderable]
   );
   const {
     dropTargetRef,
@@ -230,11 +249,7 @@ export const ExplorerTreeNode = ({
                   <MenuItem
                     key={'explorer-tree-rename'}
                     type={'default'}
-                    preFix={
-                      <MenuIcon>
-                        <EditIcon />
-                      </MenuIcon>
-                    }
+                    prefixIcon={<EditIcon />}
                     onClick={() => setRenaming(true)}
                   >
                     {t['com.affine.menu.rename']()}
@@ -295,73 +310,87 @@ export const ExplorerTreeNode = ({
   const content = (
     <div
       onClick={handleClick}
-      className={styles.itemRoot}
+      className={mobile ? styles.mobileItemRoot : styles.itemRoot}
       data-active={active}
       data-disabled={disabled}
     >
-      {Icon && (
-        <div className={styles.iconsContainer}>
-          <div
-            data-disabled={disabled}
-            onClick={handleCollapsedChange}
-            data-testid="explorer-collapsed-button"
-            className={styles.collapsedIconContainer}
-          >
-            <ArrowDownSmallIcon
-              className={styles.collapsedIcon}
-              data-collapsed={collapsed !== false}
-            />
-          </div>
-          <Icon
-            className={styles.icon}
-            draggedOver={draggedOver && !isSelfDraggedOver}
-            treeInstruction={treeInstruction}
-            collapsed={collapsed}
-          />
+      <div
+        data-disabled={disabled}
+        onClick={handleCollapsedChange}
+        data-testid="explorer-collapsed-button"
+        className={
+          mobile
+            ? styles.mobileCollapsedIconContainer
+            : styles.collapsedIconContainer
+        }
+      >
+        <ArrowDownSmallIcon
+          className={styles.collapsedIcon}
+          data-collapsed={collapsed !== false}
+        />
+      </div>
+
+      <div className={clsx(mobile ? styles.mobileItemMain : styles.itemMain)}>
+        <div
+          className={mobile ? styles.mobileIconContainer : styles.iconContainer}
+        >
+          {emoji ??
+            (Icon && (
+              <Icon
+                draggedOver={draggedOver && !isSelfDraggedOver}
+                treeInstruction={treeInstruction}
+                collapsed={collapsed}
+              />
+            ))}
         </div>
-      )}
-      {renameable && renaming && (
+
+        <div className={mobile ? styles.mobileItemContent : styles.itemContent}>
+          {name}
+        </div>
+
+        {postfix}
+        {mobile ? null : (
+          <div
+            className={styles.postfix}
+            onClick={e => {
+              // prevent jump to page
+              e.stopPropagation();
+              e.preventDefault();
+            }}
+          >
+            {inlineOperations.map(({ view }, index) => (
+              <Fragment key={index}>{view}</Fragment>
+            ))}
+            {menuOperations.length > 0 && (
+              <Menu
+                items={menuOperations.map(({ view }, index) => (
+                  <Fragment key={index}>{view}</Fragment>
+                ))}
+              >
+                <IconButton
+                  size="16"
+                  data-testid="explorer-tree-node-operation-button"
+                  style={{ marginLeft: 4 }}
+                >
+                  <MoreHorizontalIcon />
+                </IconButton>
+              </Menu>
+            )}
+          </div>
+        )}
+      </div>
+
+      {renameable && (
         <RenameModal
-          open
+          open={!!renaming}
           width={sidebarWidth - 32}
           onOpenChange={setRenaming}
           onRename={handleRename}
-          currentName={name ?? ''}
+          currentName={rawName ?? ''}
         >
           <div className={styles.itemRenameAnchor} />
         </RenameModal>
       )}
-
-      <div className={styles.itemContent}>{name}</div>
-
-      {postfix}
-      <div
-        className={styles.postfix}
-        onClick={e => {
-          // prevent jump to page
-          e.stopPropagation();
-          e.preventDefault();
-        }}
-      >
-        {inlineOperations.map(({ view }, index) => (
-          <Fragment key={index}>{view}</Fragment>
-        ))}
-        {menuOperations.length > 0 && (
-          <Menu
-            items={menuOperations.map(({ view }, index) => (
-              <Fragment key={index}>{view}</Fragment>
-            ))}
-          >
-            <IconButton
-              size="16"
-              data-testid="explorer-tree-node-operation-button"
-              style={{ marginLeft: 4 }}
-            >
-              <MoreHorizontalIcon />
-            </IconButton>
-          </Menu>
-        )}
-      </div>
     </div>
   );
 
@@ -376,7 +405,10 @@ export const ExplorerTreeNode = ({
       {...otherProps}
     >
       <div
-        className={clsx(styles.contentContainer, styles.draggedOverEffect)}
+        className={clsx(
+          mobile ? styles.mobileContentContainer : styles.contentContainer,
+          styles.draggedOverEffect
+        )}
         data-open={!collapsed}
         data-self-dragged-over={isSelfDraggedOver}
         ref={dropTargetRef}

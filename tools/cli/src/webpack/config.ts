@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { RuntimeConfig } from '@affine/env/global';
+import type { BUILD_CONFIG_TYPE } from '@affine/env/global';
 import { PerfseePlugin } from '@perfsee/webpack';
 import ReactRefreshWebpackPlugin from '@pmmmwh/react-refresh-webpack-plugin';
 import { sentryWebpackPlugin } from '@sentry/webpack-plugin';
@@ -89,8 +89,8 @@ export const getPublicPath = (buildFlags: BuildFlags) => {
 export const createConfiguration: (
   cwd: string,
   buildFlags: BuildFlags,
-  runtimeConfig: RuntimeConfig
-) => webpack.Configuration = (cwd, buildFlags, runtimeConfig) => {
+  buildConfig: BUILD_CONFIG_TYPE
+) => webpack.Configuration = (cwd, buildFlags, buildConfig) => {
   const blocksuiteBaseDir = buildFlags.localBlockSuite;
   const config = {
     name: 'affine',
@@ -293,7 +293,11 @@ export const createConfiguration: (
             },
             {
               test: /\.txt$/,
-              loader: 'raw-loader',
+              type: 'asset/source',
+            },
+            {
+              test: /\.inline\.svg$/,
+              type: 'asset/inline',
             },
             {
               test: /\.css$/,
@@ -346,7 +350,13 @@ export const createConfiguration: (
           process.env.MIXPANEL_TOKEN
         ),
         'process.env.DEBUG_JOTAI': JSON.stringify(process.env.DEBUG_JOTAI),
-        runtimeConfig: JSON.stringify(runtimeConfig),
+        ...Object.entries(buildConfig).reduce(
+          (def, [k, v]) => {
+            def[`BUILD_CONFIG.${k}`] = JSON.stringify(v);
+            return def;
+          },
+          {} as Record<string, string>
+        ),
       }),
       buildFlags.distribution === 'admin'
         ? null
@@ -376,8 +386,8 @@ export const createConfiguration: (
     optimization: OptimizeOptionOptions(buildFlags),
 
     devServer: {
-      hot: 'only',
-      liveReload: true,
+      hot: buildFlags.static ? false : 'only',
+      liveReload: !buildFlags.static,
       client: {
         overlay: process.env.DISABLE_DEV_OVERLAY === 'true' ? false : undefined,
       },
@@ -392,12 +402,12 @@ export const createConfiguration: (
             'public'
           ),
           publicPath: '/',
-          watch: true,
+          watch: !buildFlags.static,
         },
         {
           directory: join(cwd, 'public'),
           publicPath: '/',
-          watch: true,
+          watch: !buildFlags.static,
         },
       ],
       proxy: [
@@ -410,7 +420,6 @@ export const createConfiguration: (
         { context: '/api', target: 'http://localhost:3010' },
         { context: '/socket.io', target: 'http://localhost:3010', ws: true },
         { context: '/graphql', target: 'http://localhost:3010' },
-        { context: '/oauth', target: 'http://localhost:3010' },
       ],
     } as DevServerConfiguration,
   } satisfies webpack.Configuration;

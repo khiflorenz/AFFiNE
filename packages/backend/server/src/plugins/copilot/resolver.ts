@@ -21,12 +21,12 @@ import GraphQLUpload from 'graphql-upload/GraphQLUpload.mjs';
 
 import { CurrentUser } from '../../core/auth';
 import { Admin } from '../../core/common';
+import { PermissionService } from '../../core/permission';
 import { UserType } from '../../core/user';
-import { PermissionService } from '../../core/workspaces/permission';
 import {
   CopilotFailedToCreateMessage,
   FileUpload,
-  MutexService,
+  RequestMutex,
   Throttle,
   TooManyRequest,
 } from '../../fundamentals';
@@ -265,7 +265,7 @@ export class CopilotType {
 export class CopilotResolver {
   constructor(
     private readonly permissions: PermissionService,
-    private readonly mutex: MutexService,
+    private readonly mutex: RequestMutex,
     private readonly chatSession: ChatSessionService,
     private readonly storage: CopilotStorage
   ) {}
@@ -517,7 +517,16 @@ export class PromptsManagementResolver {
     description: 'List all copilot prompts',
   })
   async listCopilotPrompts() {
-    return this.promptService.list();
+    const prompts = await this.promptService.list();
+    return prompts.filter(
+      p =>
+        p.messages.length > 0 &&
+        // ignore internal prompts
+        !p.name.startsWith('workflow:') &&
+        !p.name.startsWith('debug:') &&
+        !p.name.startsWith('chat:') &&
+        !p.name.startsWith('action:')
+    );
   }
 
   @Mutation(() => CopilotPromptType, {
@@ -544,7 +553,7 @@ export class PromptsManagementResolver {
     @Args('messages', { type: () => [CopilotPromptMessageType] })
     messages: CopilotPromptMessageType[]
   ) {
-    await this.promptService.update(name, messages);
+    await this.promptService.update(name, messages, true);
     return this.promptService.get(name);
   }
 }

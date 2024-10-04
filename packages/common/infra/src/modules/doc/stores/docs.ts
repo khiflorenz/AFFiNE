@@ -1,10 +1,10 @@
-import { type DocMeta } from '@blocksuite/store';
+import type { DocMode } from '@blocksuite/blocks';
+import type { DocMeta } from '@blocksuite/store';
 import { isEqual } from 'lodash-es';
 import { distinctUntilChanged, Observable } from 'rxjs';
 
 import { Store } from '../../../framework';
 import type { WorkspaceLocalState, WorkspaceService } from '../../workspace';
-import type { DocMode } from '../entities/record';
 
 export class DocsStore extends Store {
   constructor(
@@ -101,15 +101,15 @@ export class DocsStore extends Store {
     this.workspaceService.workspace.docCollection.setDocMeta(id, meta);
   }
 
-  setDocModeSetting(id: string, mode: DocMode) {
+  setDocPrimaryModeSetting(id: string, mode: DocMode) {
     return this.localState.set(`page:${id}:mode`, mode);
   }
 
-  getDocModeSetting(id: string) {
+  getDocPrimaryModeSetting(id: string) {
     return this.localState.get<DocMode>(`page:${id}:mode`);
   }
 
-  watchDocModeSetting(id: string) {
+  watchDocPrimaryModeSetting(id: string) {
     return this.localState.watch<DocMode>(`page:${id}:mode`);
   }
 

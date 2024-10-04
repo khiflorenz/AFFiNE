@@ -13,7 +13,7 @@ export const ThemeEditorSetting = () => {
   const modified = useLiveData(themeEditor.modified$);
 
   const open = useCallback(() => {
-    if (environment.isDesktop) {
+    if (BUILD_CONFIG.isElectron) {
       apis?.ui.openThemeEditor().catch(console.error);
     } else {
       popupWindow('/theme-editor');

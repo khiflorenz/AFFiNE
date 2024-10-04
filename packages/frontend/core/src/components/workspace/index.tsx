@@ -1,4 +1,4 @@
-import { useAppSettingHelper } from '@affine/core/hooks/affine/use-app-setting-helper';
+import { useAppSettingHelper } from '@affine/core/components/hooks/affine/use-app-setting-helper';
 import {
   DocsService,
   GlobalContextService,
@@ -15,6 +15,7 @@ import { appStyle, mainContainerStyle, toolStyle } from './index.css';
 
 export type WorkspaceRootProps = PropsWithChildren<{
   resizing?: boolean;
+  className?: string;
   useNoisyBackground?: boolean;
   useBlurBackground?: boolean;
 }>;
@@ -24,14 +25,16 @@ export const AppContainer = ({
   useNoisyBackground,
   useBlurBackground,
   children,
+  className,
   ...rest
 }: WorkspaceRootProps) => {
-  const noisyBackground = useNoisyBackground && environment.isDesktop;
-  const blurBackground = environment.isDesktop && useBlurBackground;
+  const noisyBackground = BUILD_CONFIG.isElectron && useNoisyBackground;
+  const blurBackground =
+    BUILD_CONFIG.isElectron && environment.isMacOs && useBlurBackground;
   return (
     <div
       {...rest}
-      className={clsx(appStyle, {
+      className={clsx(appStyle, className, {
         'noisy-background': noisyBackground,
         'blur-background': blurBackground,
       })}
@@ -57,7 +60,7 @@ export const MainContainer = forwardRef<
     <div
       {...props}
       className={clsx(mainContainerStyle, className)}
-      data-is-desktop={environment.isDesktop}
+      data-is-desktop={BUILD_CONFIG.isElectron}
       data-transparent={false}
       data-client-border={appSettings.clientBorder}
       data-side-bar-open={appSideBarOpen}
@@ -70,6 +73,11 @@ export const MainContainer = forwardRef<
 });
 
 MainContainer.displayName = 'MainContainer';
+
+export const MainContainerFallback = ({ children }: PropsWithChildren) => {
+  // todo: default app fallback?
+  return <MainContainer>{children}</MainContainer>;
+};
 
 export const ToolContainer = (
   props: PropsWithChildren<{ className?: string }>

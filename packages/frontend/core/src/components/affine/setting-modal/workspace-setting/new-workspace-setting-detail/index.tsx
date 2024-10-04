@@ -3,8 +3,8 @@ import {
   SettingRow,
   SettingWrapper,
 } from '@affine/component/setting-components';
-import { useWorkspace } from '@affine/core/hooks/use-workspace';
-import { useWorkspaceInfo } from '@affine/core/hooks/use-workspace-info';
+import { useWorkspace } from '@affine/core/components/hooks/use-workspace';
+import { useWorkspaceInfo } from '@affine/core/components/hooks/use-workspace-info';
 import { UNTITLED_WORKSPACE_NAME } from '@affine/env/constant';
 import { useI18n } from '@affine/i18n';
 import { ArrowRightSmallIcon } from '@blocksuite/icons/rc';
@@ -17,6 +17,7 @@ import { ExportPanel } from './export';
 import { LabelsPanel } from './labels';
 import { MembersPanel } from './members';
 import { ProfilePanel } from './profile';
+import { SharingPanel } from './sharing';
 import type { WorkspaceSettingDetailProps } from './types';
 
 export const WorkspaceSettingDetail = ({
@@ -67,7 +68,8 @@ export const WorkspaceSettingDetail = ({
         <EnableCloudPanel />
         <MembersPanel />
       </SettingWrapper>
-      {environment.isDesktop && (
+      <SharingPanel />
+      {BUILD_CONFIG.isElectron && (
         <SettingWrapper title={t['Storage and Export']()}>
           <ExportPanel
             workspace={workspace}
