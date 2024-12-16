@@ -31,6 +31,7 @@ export type BUILD_CONFIG_TYPE = {
 
   // TODO(@forehalo): remove
   isSelfHosted: boolean;
+  affinerpgApi: string;
 };
 
 export type Environment = {
