@@ -429,6 +429,7 @@ export class ChatPanelInput extends WithDisposable(LitElement) {
       return;
     }
 
+    const { doc } = this.host;
     this.textarea.value = '';
     this.isInputEmpty = true;
     this.textarea.style.height = 'unset';
@@ -473,7 +474,7 @@ export class ChatPanelInput extends WithDisposable(LitElement) {
         url: baseUrl,
         data: {
           message: content,
-          workspaceId: 'default',
+          workspaceId: doc.collection.id,
           currentChatHistory,
         }
       });
