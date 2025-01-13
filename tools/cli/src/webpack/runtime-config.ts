@@ -29,6 +29,7 @@ export function getBuildConfig(buildFlags: BuildFlags): BUILD_CONFIG_TYPE {
         downloadUrl: 'https://affine.pro/download',
         imageProxyUrl: '/api/worker/image-proxy',
         linkPreviewUrl: '/api/worker/link-preview',
+        affinerpgApi: process.env.AFFINERPG_API,
       };
     },
     get beta() {

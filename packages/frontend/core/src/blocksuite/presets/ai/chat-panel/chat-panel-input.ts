@@ -1,6 +1,7 @@
 import type { EditorHost } from '@blocksuite/block-std';
 import { type AIError, openFileOrFiles } from '@blocksuite/blocks';
 import { assertExists, WithDisposable } from '@blocksuite/global/utils';
+import axios from 'axios';
 import { css, html, LitElement, nothing } from 'lit';
 import { property, query, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
@@ -15,7 +16,7 @@ import {
 import { AIProvider } from '../provider';
 import { reportResponse } from '../utils/action-reporter';
 import { readBlobAsURL } from '../utils/image';
-import type { ChatContextValue, ChatMessage } from './chat-context';
+import type { ChatContextValue } from './chat-context';
 
 const MaximumImageCount = 32;
 
@@ -105,7 +106,7 @@ export class ChatPanelInput extends WithDisposable(LitElement) {
       }
 
       .image-upload {
-        display: flex;
+        display: none;
         justify-content: center;
         align-items: center;
       }
@@ -374,6 +375,7 @@ export class ChatPanelInput extends WithDisposable(LitElement) {
         ></textarea>
         <div class="chat-panel-input-actions">
           <div
+            style="display: none;"
             class="chat-history-clear"
             @click=${async () => {
               await this.cleanupHistories();
@@ -426,7 +428,7 @@ export class ChatPanelInput extends WithDisposable(LitElement) {
     if (!text && images.length === 0) {
       return;
     }
-    const { doc } = this.host;
+
     this.textarea.value = '';
     this.isInputEmpty = true;
     this.textarea.style.height = 'unset';
@@ -454,60 +456,41 @@ export class ChatPanelInput extends WithDisposable(LitElement) {
           createdAt: new Date().toISOString(),
           attachments,
         },
-        {
-          id: '',
-          role: 'assistant',
-          content: '',
-          createdAt: new Date().toISOString(),
-        },
       ],
     });
 
     try {
-      const abortController = new AbortController();
-      const stream = AIProvider.actions.chat?.({
-        input: content,
-        docId: doc.id,
-        attachments: images,
-        workspaceId: doc.collection.id,
-        host: this.host,
-        stream: true,
-        signal: abortController.signal,
-        where: 'chat-panel',
-        control: 'chat-send',
-        isRootSession: true,
+      const currentChatHistory = this.chatContextValue.items.map(chat => {
+        return {
+          message: chat.content,
+        }
       });
 
-      if (stream) {
-        this.updateContext({ abortController });
+      const baseUrl = BUILD_CONFIG.affinerpgApi
 
-        for await (const text of stream) {
-          const items = [...this.chatContextValue.items];
-          const last = items[items.length - 1] as ChatMessage;
-          last.content += text;
-          this.updateContext({ items, status: 'transmitting' });
+      const { data } = await axios({
+        method: 'POST',
+        url: baseUrl,
+        data: {
+          message: content,
+          workspaceId: 'default',
+          currentChatHistory,
         }
+      });
 
-        this.updateContext({ status: 'success' });
+      this.updateContext({ status: 'success' });
 
-        if (!this.chatContextValue.chatSessionId) {
-          this.updateContext({
-            chatSessionId: AIProvider.LAST_ROOT_SESSION_ID,
-          });
-        }
-
-        const { items } = this.chatContextValue;
-        const last = items[items.length - 1] as ChatMessage;
-        if (!last.id) {
-          const historyIds = await AIProvider.histories?.ids(
-            doc.collection.id,
-            doc.id,
-            { sessionId: this.chatContextValue.chatSessionId }
-          );
-          if (!historyIds || !historyIds[0]) return;
-          last.id = historyIds[0].messages.at(-1)?.id ?? '';
-        }
-      }
+      this.updateContext({
+        items: [
+          ...this.chatContextValue.items,
+          {
+            id: '',
+            role: 'assistant',
+            content: data.data,
+            createdAt: new Date().toISOString(),
+          },
+        ]
+      });
     } catch (error) {
       this.updateContext({ status: 'error', error: error as AIError });
     } finally {
