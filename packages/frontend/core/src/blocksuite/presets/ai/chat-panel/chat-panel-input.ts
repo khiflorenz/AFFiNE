@@ -487,7 +487,7 @@ export class ChatPanelInput extends WithDisposable(LitElement) {
           {
             id: '',
             role: 'assistant',
-            content: data.data,
+            content: data.response,
             createdAt: new Date().toISOString(),
           },
         ]
