@@ -7,7 +7,7 @@ application code. The other branches of this repository are an upstream mirror (
 | | prd (`prd/`) | hml (`hml/`) |
 |---|---|---|
 | Image | `ghcr.io/toeverything/affine:<tag>` (upstream, no custom build) | same |
-| Server | `affine-prd` (flavor `allinone`, port 3010) + `affine-svc-prd` + `affine-ingress-prd` (`semantic.khi.fi.it`, TLS secret `app-tls`) | `affine-hml` + `affine-svc-hml`, **no ingress** (reach it with `kubectl -n hml port-forward svc/affine-svc-hml 3010:3010`) |
+| Server | `affine-prd` (flavor `allinone`, port 3010) + `affine-svc-prd` + `affine-ingress-prd` (`semantic.khi.fi.it`, TLS secret `app-tls`) | `affine-hml` + `affine-svc-hml` + `affine-ingress-hml` (`integration.khi.fi.it`, TLS `app-tls`; host taken over from the Trino ingress on 2026-10-20, DL-884) |
 | Database | `affine` on the shared Postgres prd (`postgresql-server-svc-prd`, managed in the DEVOPS repo) | own `postgres:16` (`postgres-affine-hml`), database `24` |
 | Redis | `redis-affine-prd` | `redis-affine-hml` |
 | State on NFS `192.168.170.200` | `/home/shared/affine/{config,storage,redis}` | `/home/shared/affine/AFFiNE.pro/hml/{config,storage,redis,postgres}` |
