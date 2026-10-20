@@ -80,6 +80,32 @@ DROP FUNCTION IF EXISTS fn_update_feature();
 
 Without it new users get `free_plan_v1` (self-host default: displayed as "Pro", 30 days of history).
 
+## 0.27 migration blocker: docs with two owners (must be fixed before the 0.27.4 Job)
+
+Migration `20260714000000_backfill_legacy_permission_and_subscription` copies
+`workspace_page_user_permissions` into `doc_grants`, which has a unique index "one owner per doc"
+(`doc_grants_owner_key`). 4 docs (same 4 in hml and prd) carry two `type = 99` (owner) rows: the real
+creator plus a second user added milliseconds later. The copy silently skips the second one and the
+migration then aborts with `legacy backfill incomplete: … doc_grant=4 … missing facts` (whole
+migration rolled back, Prisma marks it failed, the server keeps running on the previous schema).
+
+Fix applied in hml on 2026-10-20: keep the creator (`snapshots.created_by`) as owner, downgrade the
+other to manager (30). Run in prd before the 0.27.4 migration Job:
+
+```sql
+UPDATE workspace_page_user_permissions d SET type = 30
+WHERE d.type = 99
+  AND (d.workspace_id, d.page_id) IN (
+    SELECT workspace_id, page_id FROM workspace_page_user_permissions
+    GROUP BY 1, 2 HAVING count(*) FILTER (WHERE type = 99) > 1)
+  AND d.user_id <> (SELECT s.created_by FROM snapshots s
+                    WHERE s.workspace_id = d.workspace_id AND s.guid = d.page_id);
+```
+
+If the Job already failed once, mark the migration rolled back so Prisma re-applies it
+(`UPDATE _prisma_migrations SET rolled_back_at = now() WHERE migration_name = '20260714000000_backfill_legacy_permission_and_subscription' AND finished_at IS NULL;`),
+then re-run the Job.
+
 ## Not in this branch
 
 - `affinerag-api-hml` (own repo `khiflorenz/affinerag-api`, orphaned since prd moved to the upstream image — fate decided in DL-886).
