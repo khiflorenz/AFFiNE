@@ -19,7 +19,7 @@ spec:
       restartPolicy: Never
       containers:
       - name: migration
-        image: ghcr.io/toeverything/affine:0.25.7
+        image: ghcr.io/toeverything/affine:0.26.3
         command:
         - node
         - ./scripts/self-host-predeploy.js

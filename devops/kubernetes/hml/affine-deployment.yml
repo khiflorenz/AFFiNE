@@ -56,7 +56,7 @@ spec:
           value: https://iiif.khi.fi.it/hml/affinerag-api/ask
         - name: AFFINE_INDEXER_ENABLED
           value: 'false'
-        image: ghcr.io/toeverything/affine:0.25.7
+        image: ghcr.io/toeverything/affine:0.26.3
         name: affine-hml
         ports:
         - containerPort: 3010
