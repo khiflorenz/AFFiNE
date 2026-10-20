@@ -1,0 +1,85 @@
+# One-shot schema/data migration (upstream's `affine_migration` compose service).
+# The server image does NOT migrate on start. Run this Job with the NEW image tag before
+# rolling the Deployment to it:  kubectl delete job -n <ns> affine-migration-<ns> --ignore-not-found; kubectl apply -f affine-migration-job.yml; kubectl -n <ns> wait --for=condition=complete job/affine-migration-<ns> --timeout=15m
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: affine-migration-hml
+  namespace: hml
+  labels:
+    app: affine-migration-hml
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app: affine-migration-hml
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: migration
+        image: ghcr.io/toeverything/affine:0.25.7
+        command:
+        - node
+        - ./scripts/self-host-predeploy.js
+        env:
+        - name: AFFINE_CONFIG_PATH
+          value: /root/.affine/config
+        - name: REDIS_SERVER_HOST
+          value: redis-affine-hml
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: affine-secret-hml
+              key: DATABASE_URL
+        - name: NODE_ENV
+          value: production
+        - name: AFFINE_ADMIN_EMAIL
+          value: proto@khi.fi.it
+        - name: AFFINE_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: affine-secret-hml
+              key: AFFINE_ADMIN_PASSWORD
+        - name: AFFINE_SERVER_HOST
+          value: iiif.khi.fi.it
+        - name: AFFINE_SERVER_HTTPS
+          value: 'true'
+        - name: SERVER_FLAVOR
+          value: allinone
+        - name: MAILER_HOST
+          value: 192.168.170.20
+        - name: MAILER_PORT
+          value: '25'
+        - name: MAILER_USER
+          value: proto@khi.fi.it
+        - name: MAILER_PASSWORD
+        - name: MAILER_SENDER
+          value: proto@khi.fi.it
+        - name: MAILER_IGNORE_TLS
+          value: 'true'
+        - name: AFFINERPG_API
+          value: https://iiif.khi.fi.it/hml/affinerag-api/ask
+        - name: AFFINE_INDEXER_ENABLED
+          value: 'false'
+        volumeMounts:
+        - mountPath: /root/.affine/config
+          name: affine-hml-config
+        - mountPath: /root/.affine/storage
+          name: affine-hml-storage
+        resources:
+          requests:
+            cpu: 100m
+            memory: 512Mi
+          limits:
+            memory: 2Gi
+      volumes:
+      - name: affine-hml-config
+        nfs:
+          path: /home/shared/affine/AFFiNE.pro/hml/config
+          server: 192.168.170.200
+      - name: affine-hml-storage
+        nfs:
+          path: /home/shared/affine/AFFiNE.pro/hml/storage
+          server: 192.168.170.200

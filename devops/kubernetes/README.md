@@ -35,7 +35,15 @@ kubectl apply -f hml/            # or prd/
 kubectl -n hml rollout status deploy/affine-hml
 ```
 
-Upgrades are tag bumps in `affine-deployment.yml`; AFFiNE runs its Prisma migrations on start.
+Upgrades are tag bumps in `affine-deployment.yml` **and** `affine-migration-job.yml`. The server image does not run migrations on start: upstream runs them in a separate one-shot container (`self-host-predeploy.js` = `prisma migrate deploy` + data migrations). Order per upgrade: run the Job with the new tag, wait for it to complete, then roll the Deployment:
+
+```bash
+kubectl delete job -n hml affine-migration-hml --ignore-not-found
+kubectl apply -f hml/affine-migration-job.yml
+kubectl -n hml wait --for=condition=complete job/affine-migration-hml --timeout=15m
+kubectl apply -f hml/affine-deployment.yml
+```
+
 Back up first — procedure in the DEVOPS repo, `docs/runbooks/affine-backup-restore.md`.
 Upgrade plan and version history: Jira DL-880.
 
