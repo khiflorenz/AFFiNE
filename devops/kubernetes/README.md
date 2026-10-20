@@ -47,6 +47,23 @@ kubectl apply -f hml/affine-deployment.yml
 Back up first — procedure in the DEVOPS repo, `docs/runbooks/affine-backup-restore.md`.
 Upgrade plan and version history: Jira DL-880.
 
+## Legacy hand-made DB trigger (must be dropped before 0.26)
+
+The prd database carries a trigger that was added by hand in 2024, not by any migration:
+`update_feature BEFORE INSERT ON user_features EXECUTE FUNCTION fn_update_feature()`, which forced
+every new user onto `pro_plan_v1`. The 0.26 migration `update_feature` drops the
+`user_features.feature_id` column, after which the trigger makes every user creation fail
+(`createUser` → 500, `prisma.userFeature.create(): The column \`new\` does not exist`). Dropped in hml on
+2026-10-20 (DL-883); prd must do the same in its window (DL-887), before or right after the 0.26.3
+migration Job:
+
+```sql
+DROP TRIGGER IF EXISTS update_feature ON user_features;
+DROP FUNCTION IF EXISTS fn_update_feature();
+```
+
+Without it new users get `free_plan_v1` (self-host default: displayed as "Pro", 30 days of history).
+
 ## Not in this branch
 
 - `affinerag-api-hml` (own repo `khiflorenz/affinerag-api`, orphaned since prd moved to the upstream image — fate decided in DL-886).
