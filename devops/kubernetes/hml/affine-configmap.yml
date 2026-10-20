@@ -1,0 +1,13 @@
+# AFFiNE 0.27+ configuration file (mounted at /root/.affine/config/config.json).
+# Precedence: built-in defaults <- env vars <- this file <- Admin Panel (app_configs table).
+# Secrets (DATABASE_URL, MAILER_PASSWORD) stay in affine-secret-<env> as env vars.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: affine-config-hml
+  namespace: hml
+data:
+  config.json: "{\n  \"$schema\": \"https://github.com/toeverything/affine/releases/download/v0.27.4/config.schema.json\",\n  \"server\": {\n    \"name\": \"KHI AFFINE (hml)\",\n    \"host\": \"iiif.khi.fi.it\"\
+    ,\n    \"https\": true,\n    \"externalUrl\": \"https://iiif.khi.fi.it\"\n  },\n  \"mailer\": {\n    \"SMTP\": {\n      \"name\": \"iiif.khi.fi.it\",\n      \"host\": \"192.168.170.20\",\n      \"port\"\
+    : 25,\n      \"username\": \"proto@khi.fi.it\",\n      \"sender\": \"proto@khi.fi.it\",\n      \"ignoreTLS\": true\n    }\n  },\n  \"indexer\": {\n    \"enabled\": false\n  },\n  \"copilot\": {\n  \
+    \  \"enabled\": false\n  }\n}\n"

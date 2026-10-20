@@ -13,6 +13,22 @@ application code. The other branches of this repository are an upstream mirror (
 | State on NFS `192.168.170.200` | `/home/shared/affine/{config,storage,redis}` | `/home/shared/affine/AFFiNE.pro/hml/{config,storage,redis,postgres}` |
 | Secrets | `affine-secret-prd` | `affine-secret-hml`, `postgres-affine-secret-hml` |
 
+## Configuration (0.27+)
+
+Since 0.27 the server reads `/root/.affine/config/config.json` (ConfigMap `affine-config-<env>`,
+mounted with `subPath` into the NFS config dir). Precedence: built-in defaults ← env vars ← `config.json`
+← Admin Panel (`app_configs` table, e.g. `server.name`). What is where:
+
+| Setting | 0.24 (env) | 0.27 |
+|---|---|---|
+| `server.host` / `https` / `externalUrl` / `name` | `AFFINE_SERVER_*` | `config.json` |
+| `mailer.SMTP.*` (host, port, username, sender, ignoreTLS, name = HELO) | `MAILER_*` | `config.json`; `MAILER_PASSWORD` stays env (Secret) |
+| `indexer.enabled` | `AFFINE_INDEXER_ENABLED` | `config.json` (`false`, no search provider deployed) |
+| `copilot.enabled` | — | `config.json` (`false` → no AI UI) |
+| `DATABASE_URL`, `REDIS_SERVER_HOST`, `SERVER_FLAVOR`, `NODE_ENV` | env | still env |
+| `AFFINE_ADMIN_EMAIL` / `AFFINE_ADMIN_PASSWORD` | bootstrap of the first user | removed upstream; first user is created on sign-up / Admin Panel |
+| `affine.js`, `affine.env.js`, `.env` in the config dir | legacy (0.17-era) | ignored, left in place |
+
 ## Secrets
 
 Secrets are committed only as `*.example.yml`. Create the real ones once per namespace from the

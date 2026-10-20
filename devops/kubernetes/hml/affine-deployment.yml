@@ -15,8 +15,6 @@ spec:
     spec:
       containers:
       - env:
-        - name: AFFINE_CONFIG_PATH
-          value: /root/.affine/config
         - name: REDIS_SERVER_HOST
           value: redis-affine-hml
         - name: DATABASE_URL
@@ -26,37 +24,10 @@ spec:
               key: DATABASE_URL
         - name: NODE_ENV
           value: production
-        - name: AFFINE_ADMIN_EMAIL
-          value: proto@khi.fi.it
-        - name: AFFINE_ADMIN_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: affine-secret-hml
-              key: AFFINE_ADMIN_PASSWORD
-        - name: AFFINE_SERVER_HOST
-          value: iiif.khi.fi.it
-        - name: AFFINE_SERVER_HTTPS
-          value: 'true'
         - name: SERVER_FLAVOR
           value: allinone
-        - name: MAILER_HOST
-          value: 192.168.170.20
-        - name: MAILER_PORT
-          value: '25'
-        - name: MAILER_USER
-          value: proto@khi.fi.it
         - name: MAILER_PASSWORD
-        - name: MAILER_SENDER
-          value: proto@khi.fi.it
-        - name: MAILER_IGNORE_TLS
-          value: 'true'
-        - name: MAILER_SERVERNAME   # HELO name; since 0.25 the default is 'AFFiNE Server' (space) and the relay answers 501
-          value: iiif.khi.fi.it
-        - name: AFFINERPG_API
-          value: https://iiif.khi.fi.it/hml/affinerag-api/ask
-        - name: AFFINE_INDEXER_ENABLED
-          value: 'false'
-        image: ghcr.io/toeverything/affine:0.26.3
+        image: ghcr.io/toeverything/affine:0.27.4
         name: affine-hml
         ports:
         - containerPort: 3010
@@ -65,6 +36,10 @@ spec:
           name: affine-hml-config
         - mountPath: /root/.affine/storage
           name: affine-hml-storage
+        - name: affine-config-json
+          mountPath: /root/.affine/config/config.json
+          subPath: config.json
+          readOnly: true
       volumes:
       - name: affine-hml-config
         nfs:
@@ -74,3 +49,6 @@ spec:
         nfs:
           path: /home/shared/affine/AFFiNE.pro/hml/storage
           server: 192.168.170.200
+      - name: affine-config-json
+        configMap:
+          name: affine-config-hml
