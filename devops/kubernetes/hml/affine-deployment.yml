@@ -48,11 +48,13 @@ spec:
         - name: MAILER_PASSWORD
         - name: MAILER_SENDER
           value: proto@khi.fi.it
+        - name: MAILER_IGNORE_TLS
+          value: 'true'
         - name: AFFINERPG_API
           value: https://iiif.khi.fi.it/hml/affinerag-api/ask
         - name: AFFINE_INDEXER_ENABLED
           value: 'false'
-        image: ghcr.io/toeverything/affine:0.24.0
+        image: ghcr.io/toeverything/affine:0.24.1
         name: affine-hml
         ports:
         - containerPort: 3010
