@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: redis-affine-prd
+  name: redis-affine-prd
+  namespace: prd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: affine-redis
+  template:
+    metadata:
+      labels:
+        app: affine-redis
+    spec:
+      containers:
+      - image: redis
+        name: redis
+        ports:
+        - containerPort: 6379
+        volumeMounts:
+        - mountPath: /data
+          name: redis-affine-prd-storage
+      volumes:
+      - name: redis-affine-prd-storage
+        nfs:
+          path: /home/shared/affine/redis
+          server: 192.168.170.200

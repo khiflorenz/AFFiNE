@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: redis-affine-hml
+  name: redis-affine-hml
+  namespace: hml
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: affine-redis
+  template:
+    metadata:
+      labels:
+        app: affine-redis
+    spec:
+      containers:
+      - image: redis
+        name: redis
+        ports:
+        - containerPort: 6379
+        volumeMounts:
+        - mountPath: /data
+          name: redis-affine-hml-storage
+      volumes:
+      - name: redis-affine-hml-storage
+        nfs:
+          path: /home/shared/affine/AFFiNE.pro/hml/redis
+          server: 192.168.170.200
