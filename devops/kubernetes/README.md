@@ -106,6 +106,45 @@ If the Job already failed once, mark the migration rolled back so Prisma re-appl
 (`UPDATE _prisma_migrations SET rolled_back_at = now() WHERE migration_name = '20260714000000_backfill_legacy_permission_and_subscription' AND finished_at IS NULL;`),
 then re-run the Job.
 
+## Nightly jobs (BullMQ) — why `job.queue.removeOnFail` is set
+
+AFFiNE schedules its maintenance jobs (`nightly.cleanExpiredHistories`, `cleanExpiredUserSessions`,
+`cleanExpiredNotifications`, `cleanExpiredPendingBlobs`, payment reconciliation, ...) every midnight UTC
+on the BullMQ queue `nightly` (Redis db 4, prefix `affine_job`). Each job uses a **fixed `jobId`**
+(`nightly-doc-clean-expired-histories`, ...). BullMQ refuses to add a job whose id still exists, so a job
+that failed once stays in the `failed` set and every later run of that id is rejected with the event
+`duplicated` — silently, forever. That is what happened in prd on 2025-11-17: four jobs stuck for 11 months,
+doc history never purged (8 000 rows past expiry, ~800 MB).
+
+The upstream queue default on 0.27 is `removeOnFail: {age: 86400, count: 500}`, but the age sweep only runs
+when *another* job fails, so the pattern survives the upgrade. Our `config.json` therefore sets
+
+```json
+"job": { "queue": { "attempts": 5, "backoff": { "type": "exponential", "delay": 1000 },
+                    "removeOnComplete": true, "removeOnFail": true } }
+```
+
+(`job.queue` is a descriptor key: the object replaces the default as a whole, so the upstream fields are
+repeated). A job that exhausts its 5 attempts is dropped from Redis and runs again the next night. Failures
+are still logged by the server (`Job failed: [nightly.…]`). Two jobs fail every night on a self-host and are
+expected to: `nightly-backend-runtime-housekeeping` (`embedding_unavailable`, copilot/pgvector) and
+`nightly-payment-reconcile-stripe-refunds` (no Stripe key).
+
+Useful commands (hml; prd = `redis-affine-prd` in `prd`):
+
+```bash
+# what is blocked right now
+kubectl -n hml exec deploy/redis-affine-hml -- redis-cli -n 4 ZRANGE affine_job:nightly:failed 0 -1 WITHSCORES
+# per-night timeline (added / duplicated / completed / failed per jobId)
+kubectl -n hml exec deploy/redis-affine-hml -- redis-cli -n 4 XREVRANGE affine_job:nightly:events + - COUNT 60
+# unblock by hand (one-off, e.g. before the first midnight on 0.27 in prd)
+kubectl -n hml exec deploy/redis-affine-hml -- sh -c 'for j in $(redis-cli -n 4 ZRANGE affine_job:nightly:failed 0 -1); do redis-cli -n 4 ZREM affine_job:nightly:failed $j; redis-cli -n 4 DEL affine_job:nightly:$j; done'
+# symptom check in the DB (should be ~0 the morning after)
+kubectl -n hml exec -i deploy/postgres-affine-hml -- psql -U affine -d 24 -Atc "select count(*) from snapshot_histories where expired_at < now()"
+```
+
+After the first purge in prd the table keeps its size until `VACUUM FULL snapshot_histories` (or pg_repack).
+
 ## Not in this branch
 
 - `affinerag-api-hml` (own repo `khiflorenz/affinerag-api`, orphaned since prd moved to the upstream image — fate decided in DL-886).

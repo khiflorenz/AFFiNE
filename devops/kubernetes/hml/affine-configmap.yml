@@ -1,13 +1,45 @@
 # AFFiNE 0.27+ configuration file (mounted at /root/.affine/config/config.json).
 # Precedence: built-in defaults <- env vars <- this file <- Admin Panel (app_configs table).
 # Secrets (DATABASE_URL, MAILER_PASSWORD) stay in affine-secret-<env> as env vars.
+# job.queue: a descriptor key is replaced as a whole, so every field of the upstream
+# default is repeated here; removeOnFail=true is ours (see README, "Nightly jobs").
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: affine-config-hml
   namespace: hml
 data:
-  config.json: "{\n  \"$schema\": \"https://github.com/toeverything/affine/releases/download/v0.27.4/config.schema.json\",\n  \"server\": {\n    \"name\": \"KHI AFFINE (hml)\",\n    \"host\": \"integration.khi.fi.it\"\
-    ,\n    \"https\": true,\n    \"externalUrl\": \"https://integration.khi.fi.it\"\n  },\n  \"mailer\": {\n    \"SMTP\": {\n      \"name\": \"integration.khi.fi.it\",\n      \"host\": \"192.168.170.20\"\
-    ,\n      \"port\": 25,\n      \"username\": \"proto@khi.fi.it\",\n      \"sender\": \"proto@khi.fi.it\",\n      \"ignoreTLS\": true\n    }\n  },\n  \"indexer\": {\n    \"enabled\": false\n  },\n  \"\
-    copilot\": {\n    \"enabled\": false\n  }\n}\n"
+  config.json: |
+    {
+      "$schema": "https://github.com/toeverything/affine/releases/download/v0.27.4/config.schema.json",
+      "server": {
+        "name": "KHI AFFINE (hml)",
+        "host": "integration.khi.fi.it",
+        "https": true,
+        "externalUrl": "https://integration.khi.fi.it"
+      },
+      "mailer": {
+        "SMTP": {
+          "name": "integration.khi.fi.it",
+          "host": "192.168.170.20",
+          "port": 25,
+          "username": "proto@khi.fi.it",
+          "sender": "proto@khi.fi.it",
+          "ignoreTLS": true
+        }
+      },
+      "indexer": {
+        "enabled": false
+      },
+      "copilot": {
+        "enabled": false
+      },
+      "job": {
+        "queue": {
+          "attempts": 5,
+          "backoff": { "type": "exponential", "delay": 1000 },
+          "removeOnComplete": true,
+          "removeOnFail": true
+        }
+      }
+    }
