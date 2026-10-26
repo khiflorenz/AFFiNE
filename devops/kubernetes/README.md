@@ -164,6 +164,104 @@ kubectl -n hml logs job/wd-test; kubectl -n hml delete job wd-test
 Validation of `removeOnFail: true` in hml (2026-10-24/25/26): no `duplicated` events, failed set empty after
 each midnight, `expired_at < now()` = 0.
 
+## prd upgrade = blue/green with a new stack (`prd-v2/`, DL-887)
+
+Decided 2026-10-26 (upstream-only, no fork): instead of upgrading the running prd in place, a second
+stack `affine2-*` is built next to it in the `prd` namespace, filled from a copy of the live data,
+upgraded to 0.27.4, validated at **https://integration.khi.fi.it** (taken back from hml, which is
+scaled to 0 for the duration), and only then takes over **https://semantic.khi.fi.it** by switching
+the Ingress. The old stack stays untouched and runnable until it is deleted = rollback is "switch the
+Ingress back". Manifests in `prd-v2/`; the old stack's manifests stay in `prd/` until cleanup.
+
+What is new in the stack (vs `prd/`):
+
+| | old `affine-prd` | new `affine2-prd` |
+|---|---|---|
+| image | 0.24.0, `imagePullSecrets` | 0.27.4 by digest, public image |
+| DB | `affine` on `postgresql-server-prd` | **`affine2`** on the same server (restored from `affine`) |
+| Redis | NFS `/home/shared/affine/redis` (carries the stuck nightly set) | `redis-affine2-prd`, fresh, NFS `/home/shared/affine/prd-v2/redis` |
+| blobs | NFS `/home/shared/affine/storage/blobs` (4.5 G, 2544 files, 895 in `blobs`) | **Nexus S3 bucket `khi-affine-prd`** (CORS set for semantic + integration) |
+| avatars | same NFS dir | `fs` on NFS `/home/shared/affine/prd-v2/storage/avatars` (2 files; Nexus has no anonymous read) |
+| config | env vars + NFS config dir (`affine.js`, `private.key`…) | `config.json` in Secret `affine2-config-prd`; config dir = emptyDir (0.27 keeps signing keys in `app_configs`) |
+| MCP | — | `copilot.enabled: true` (read-only MCP; no AI key) |
+| nightly | stuck since 2025-11-17 | `job.queue.removeOnFail: true` + `affine2-nightly-watchdog-prd` |
+
+S3 facts verified on 2026-10-26: Nexus (Ceph RGW) accepts `put-bucket-cors`; the server answers
+`GET /api/workspaces/:id/blobs/:key` with a **302 to a presigned bucket URL** whenever the provider is
+S3 (not configurable), so the browser fetches from `s3.nexus.mpcdf.mpg.de` and the bucket CORS rule
+(`AllowedOrigins` semantic + integration, `GET/HEAD/PUT`) is mandatory. The object's own
+`Content-Type` is what the browser sees, hence `blob-copy-job.yml` sets it from `blobs.mime`.
+Anonymous read is not possible on Nexus (no bucket policy allowed from our key — untested, blocked), so
+avatars stay on `fs`. 0.27 also runs a **blob reconciliation + cleanup**: objects without a `blobs`
+row get a row (`backfill_missing_blob_metadata`), and completed blobs referenced by no doc are
+deleted after a 30-day grace (`blob_cleanup_candidates`, reason `unreferenced_completed_blob`;
+hml deleted 32 orphans = 58 MB in its first week, verified not referenced by any snapshot/update).
+
+### Phase 0 — free integration.khi.fi.it (hml off)
+
+```bash
+kubectl -n hml scale deploy affine-hml postgres-affine-hml redis-affine-hml --replicas=0
+kubectl -n hml delete ingress affine-ingress-hml
+kubectl -n hml patch cronjob affine-nightly-watchdog-hml -p '{"spec":{"suspend":true}}'
+```
+
+### Phase 1 — new infra (nothing touches the old stack)
+
+1. NFS dirs (on a node or via a helper pod with the NFS root mounted): `/home/shared/affine/prd-v2/{redis,storage/avatars}`;
+   copy `/home/shared/affine/storage/avatars/*` into the new `avatars/`.
+2. Secrets from the three `*.example.yml` (`affine2-secret-prd`, `affine2-config-prd`, `affine2-s3-prd`,
+   optional `affine2-watchdog-discord-prd`). Keep `mailer` out of config.json until the cutover.
+3. DB: on the shared Postgres (`kubectl -n prd exec -i postgresql-server-prd-0 -- psql -U postgres`):
+   `CREATE DATABASE affine2 TEMPLATE template0;` then
+   `pg_dump -U postgres affine | psql -U postgres -q affine2` (838 MB, ~1-2 min, run inside the pod).
+   Add `affine2` to the backup allow-list ConfigMap of `postgresql-server-backup-prd`.
+4. `kubectl apply -f prd-v2/redis-deployment.yml -f prd-v2/redis-service.yml -f prd-v2/affine2-service.yml`.
+5. Blobs: `kubectl apply -f prd-v2/blob-copy-job.yml` (bulk copy NFS → bucket, then Content-Type pass; ~15-30 min).
+
+### Phase 2 — prepare the copied DB (same fixes as hml, see the two sections above)
+
+In `affine2`: drop the legacy trigger (`DROP TRIGGER update_feature ON …; DROP FUNCTION fn_update_feature();`)
+and apply the two-owners fix for the 4 docs (section "0.27 migration blocker") **before** the 0.27.4 Job.
+
+### Phase 3 — migrate and start
+
+`affine2-migration-job.yml` four times, bumping `image` each time: 0.24.1 → 0.25.7 → 0.26.3 → 0.27.4
+(digests in the file header). Then `kubectl apply -f prd-v2/affine2-deployment.yml -f prd-v2/affine2-ingress.yml
+-f prd-v2/affine2-nightly-watchdog.yml`. Validate at https://integration.khi.fi.it: login, docs, images /
+attachments (must load from a `s3.nexus.mpcdf.mpg.de` URL in the network tab), history panel, upload,
+MCP credential, nightly events after the first midnight (`XREVRANGE affine_job:nightly:events` on
+`redis-affine2-prd`), server log clean.
+
+### Phase 4 — validation window (days)
+
+Everything written into the new stack during this phase is **discarded** at the cutover (DB and Redis
+are rebuilt from the live stack). Do not configure anything in the Admin Panel; put it in config.json.
+
+### Phase 5 — cutover (after the human OK; ~20-30 min downtime)
+
+1. Announce; `kubectl -n prd scale deploy affine-prd --replicas=0` (old stack frozen = consistent dump).
+2. Rebuild `affine2` from the live data: `DROP DATABASE affine2; CREATE DATABASE affine2 TEMPLATE template0;`
+   dump|restore again, phase 2 fixes again, the four migration Jobs again (each < 1 min on 838 MB).
+3. `kubectl -n prd scale deploy affine2-prd --replicas=0` during step 2; `redis-cli FLUSHALL` on `redis-affine2-prd`
+   (caches/sessions from the validation phase).
+4. Blobs delta: re-run `blob-copy-job.yml` (sync + Content-Type pass are idempotent).
+5. Edit Secret `affine2-config-prd`: `server.host/externalUrl` → `semantic.khi.fi.it`, add the `mailer` block.
+6. `kubectl -n prd delete ingress affine-ingress-prd`; set `host: semantic.khi.fi.it` in `affine2-ingress.yml`, apply;
+   `kubectl -n prd scale deploy affine2-prd --replicas=1`.
+7. Smoke test on https://semantic.khi.fi.it, tell desktop users: clients < 0.26 must update (0.27 server refuses them).
+   `VACUUM FULL snapshot_histories` the morning after the first nightly run.
+
+Rollback (any time before cleanup): delete `affine2-ingress-prd`, re-apply `prd/affine-ingress.yml`,
+`kubectl -n prd scale deploy affine-prd --replicas=1`. Edits made on the new stack after the cutover are lost.
+
+### Phase 6 — cleanup (≥ 1 week after the cutover)
+
+Delete `deploy/affine-prd`, `deploy/redis-affine-prd`, `svc/affine-svc-prd`, the leftovers
+`postgres-affine-svc-prd` / `postgres-backup-affine-svc`, Secret `affine-secret-prd`; drop DB `affine`
+after one more dump into the cold backup dir; move `/home/shared/affine/{storage,redis,config}` to the
+cold backup; move `prd-v2/` to `prd/` in this branch; restore hml (scale back up, hml gets a new
+sub-path-free hostname or stays off — decide then).
+
 ## Not in this branch
 
 - `affinerag-api-hml` (own repo `khiflorenz/affinerag-api`, orphaned since prd moved to the upstream image — fate decided in DL-886).

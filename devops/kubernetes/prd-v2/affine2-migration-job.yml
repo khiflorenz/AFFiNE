@@ -1,0 +1,67 @@
+# One-shot schema/data migration for the NEW database. Run once per step of the upgrade path with the
+# matching image (0.24.1 -> 0.25.7 -> 0.26.3 -> 0.27.4): edit `image`, then
+#   kubectl -n prd delete job affine2-migration-prd --ignore-not-found
+#   kubectl apply -f affine2-migration-job.yml && kubectl -n prd wait --for=condition=complete job/affine2-migration-prd --timeout=15m
+# Digests: 0.24.1 sha256:ab87d68f6809a8318e3f30b6ea0006a25a6221933f03a210b2b9b6bfa42c1231
+#          0.25.7 sha256:e24e34c351e787dbfc61bf768bea5650447177a956649cecf06f6ddf01585716
+#          0.26.3 sha256:725aaceb0ed94d4b832ae6ef9414503291c9b2b4f60bd6f3c7eef571b6149add
+#          0.27.4 sha256:b649f5ce2384ffdf13c23bccf81d759e15973d59d0b0058af65d895a84373099
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: affine2-migration-prd
+  namespace: prd
+  labels:
+    app: affine2-migration-prd
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app: affine2-migration-prd
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: migration
+        image: ghcr.io/toeverything/affine:0.24.1@sha256:ab87d68f6809a8318e3f30b6ea0006a25a6221933f03a210b2b9b6bfa42c1231
+        command: ["node", "./scripts/self-host-predeploy.js"]
+        env:
+        - name: NODE_ENV
+          value: production
+        - name: SERVER_FLAVOR
+          value: allinone
+        - name: REDIS_SERVER_HOST
+          value: redis-affine2-prd
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: affine2-secret-prd
+              key: DATABASE_URL
+        - name: MAILER_PASSWORD
+          value: ''
+        resources:
+          requests:
+            cpu: 100m
+            memory: 512Mi
+          limits:
+            memory: 2Gi
+        volumeMounts:
+        - name: config
+          mountPath: /root/.affine/config
+        - name: config-json
+          mountPath: /root/.affine/config/config.json
+          subPath: config.json
+          readOnly: true
+        - name: storage
+          mountPath: /root/.affine/storage
+      volumes:
+      - name: config
+        emptyDir: {}
+      - name: config-json
+        secret:
+          secretName: affine2-config-prd
+      - name: storage
+        nfs:
+          path: /home/shared/affine/prd-v2/storage
+          server: 192.168.170.200

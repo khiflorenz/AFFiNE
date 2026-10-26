@@ -1,0 +1,96 @@
+# AFFiNE nightly-cleanup watchdog (prd, affine2 stack) — see README.md "Nightly jobs (BullMQ)" → Watchdog.
+# Daily, after the 00:00 UTC nightly queue: counts doc histories past their expiry that the
+# `nightly-doc-clean-expired-histories` job should have purged. Above the threshold = the BullMQ
+# nightly queue is stuck (fixed-jobId pattern) → one Discord message per day until fixed.
+# Stateless and read-only: one SELECT with the app's own DATABASE_URL, no RBAC, no state.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: affine2-nightly-watchdog-prd
+  namespace: prd
+  labels:
+    app: affine2-nightly-watchdog-prd
+spec:
+  schedule: "0 6 * * *"
+  timeZone: Etc/UTC
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 120
+      backoffLimit: 1
+      template:
+        metadata:
+          labels:
+            app: affine2-nightly-watchdog-prd
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: watchdog
+              # Official image, pinned by digest (psql + busybox wget with TLS). Same major as the hml Postgres.
+              image: docker.io/library/postgres:16-alpine@sha256:0cefaabd882e42bcb2a2f3dc56d3ce4770560ba62fd7f197f1a2e008fd5731ab
+              command: ["/bin/sh", "-ec"]
+              args:
+                - |
+                  post() {
+                    if [ "$DRY_RUN" = "1" ]; then echo "DRY RUN, would post: $1"; return; fi
+                    [ -n "$DISCORD_WEBHOOK_URL" ] || { echo "no webhook configured, message: $1"; return; }
+                    printf '{"content":"%s"}' "$1" > /tmp/payload.json
+                    wget -q -O /dev/null -T 15 --header 'content-type: application/json' \
+                      --post-file /tmp/payload.json "$DISCORD_WEBHOOK_URL" || echo "discord post failed"
+                  }
+                  if ! out=$(psql "$DATABASE_URL" -Atc "select count(*) filter (where expired_at < now()), count(*), pg_size_pretty(pg_total_relation_size('snapshot_histories')) from snapshot_histories" 2>&1); then
+                    echo "psql failed: $out"
+                    post "🟠 AFFiNE $ENV nightly watchdog: cannot query the DB ($(echo "$out" | head -c 200 | tr -d '\"\\')) — check affine-secret-$ENV / Postgres."
+                    exit 1
+                  fi
+                  expired=${out%%|*}; rest=${out#*|}; total=${rest%%|*}; size=${rest#*|}
+                  echo "expired=$expired total=$total size=$size threshold=$EXPIRED_THRESHOLD"
+                  if [ "$expired" -gt "$EXPIRED_THRESHOLD" ]; then
+                    post "⚠️ AFFiNE $ENV: nightly cleanup is not running — $expired expired doc histories still in snapshot_histories (threshold $EXPIRED_THRESHOLD, $total rows, $size). The BullMQ nightly queue is probably stuck on a fixed jobId: see khiflorenz/AFFiNE branch deploy, devops/kubernetes/README.md → Nightly jobs (BullMQ)."
+                  fi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              env:
+                - name: ENV
+                  value: "prd (affine2)"
+                - name: HOME  # psql looks for ~/.psqlrc; root fs is read-only
+                  value: "/tmp"
+                - name: EXPIRED_THRESHOLD  # ~25 histories expire per day in prd; the nightly job brings it to 0
+                  value: "50"
+                - name: DRY_RUN
+                  value: "0"
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: affine2-secret-prd
+                      key: DATABASE_URL
+                - name: DISCORD_WEBHOOK_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: affine2-watchdog-discord-prd
+                      key: DISCORD_WEBHOOK_URL
+                      optional: true
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  cpu: 200m
+                  memory: 64Mi
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: tmp
+              emptyDir: {}

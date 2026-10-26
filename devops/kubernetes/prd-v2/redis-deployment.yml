@@ -1,0 +1,39 @@
+# Redis of the new stack: fresh data (no inherited BullMQ failed set), persisted on a new NFS dir
+# (sessions survive a restart). Official image pinned by digest.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-affine2-prd
+  namespace: prd
+  labels:
+    app: redis-affine2-prd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis-affine2-prd
+  template:
+    metadata:
+      labels:
+        app: redis-affine2-prd
+    spec:
+      containers:
+      - name: redis
+        image: docker.io/library/redis:7.4-alpine@sha256:6ba19c50b56777f5c11c58eff8ddb69d0d5f27ba131cffb63f180ccfd43c66af
+        args: ["redis-server", "--save", "60", "1", "--appendonly", "no"]
+        ports:
+        - containerPort: 6379
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            memory: 512Mi
+        volumeMounts:
+        - mountPath: /data
+          name: data
+      volumes:
+      - name: data
+        nfs:
+          path: /home/shared/affine/prd-v2/redis
+          server: 192.168.170.200
