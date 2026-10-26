@@ -145,6 +145,25 @@ kubectl -n hml exec -i deploy/postgres-affine-hml -- psql -U affine -d 24 -Atc "
 
 After the first purge in prd the table keeps its size until `VACUUM FULL snapshot_histories` (or pg_repack).
 
+### Watchdog (`affine-nightly-watchdog-<env>`)
+
+`<env>/affine-nightly-watchdog.yml` is a daily CronJob (06:00 UTC, after the nightly queue) that runs the
+symptom check above with the app's own `DATABASE_URL` (one read-only `SELECT`, no RBAC, no state) and posts
+to Discord when more than `EXPIRED_THRESHOLD` (50) histories are past their expiry — i.e. the nightly job did
+not run. It is stateless on purpose: the symptom only changes once a day, so "one message per day until
+fixed" is the natural cadence. It also posts when the DB cannot be queried. Webhook in the optional Secret
+`affine-watchdog-discord-<env>` (template `affine-watchdog-discord-secret.example.yml`; same webhook as
+`hml-capacity-guard`). Test without posting:
+
+```bash
+kubectl -n hml create job --from=cronjob/affine-nightly-watchdog-hml wd-test
+kubectl -n hml set env job/wd-test DRY_RUN=1 EXPIRED_THRESHOLD=-1   # or edit before creating
+kubectl -n hml logs job/wd-test; kubectl -n hml delete job wd-test
+```
+
+Validation of `removeOnFail: true` in hml (2026-10-24/25/26): no `duplicated` events, failed set empty after
+each midnight, `expired_at < now()` = 0.
+
 ## Not in this branch
 
 - `affinerag-api-hml` (own repo `khiflorenz/affinerag-api`, orphaned since prd moved to the upstream image — fate decided in DL-886).
