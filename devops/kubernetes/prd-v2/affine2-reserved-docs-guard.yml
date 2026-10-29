@@ -1,0 +1,78 @@
+# Workaround for upstream bug toeverything/AFFiNE#15526 in 0.27.4 (fixed in 0.27.5-beta, no stable yet).
+# The daily document cleanup (02:00 UTC mark, 04:00 UTC execute, 30-day grace, no config knob) treats
+# every stored doc that is not listed in the workspace root `meta.pages` as garbage, including AFFiNE's
+# own internal docs: db$<ws>$folders (folder tree), db$<ws>$docProperties, db$<ws>$pinnedCollections,
+# db$<ws>$docCustomPropertyInfo and userdata$<user>$<ws>$… . After 30 days without activity their rows
+# would be deleted. This job removes those internal docs from the candidate list every day at 03:00
+# UTC, so their 30-day clock never runs out. Page candidates (real orphans) are left alone.
+# REMOVE this CronJob after upgrading to an AFFiNE release that contains commit bd095495d
+# (`reserved_doc::classify` in document_cleanup.rs) — see README "Document cleanup".
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: affine2-reserved-docs-guard-prd
+  namespace: prd
+  labels:
+    app: affine2-reserved-docs-guard-prd
+spec:
+  schedule: "0 3 * * *"
+  timeZone: Etc/UTC
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 120
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app: affine2-reserved-docs-guard-prd
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: guard
+              image: docker.io/library/postgres:16-alpine@sha256:0cefaabd882e42bcb2a2f3dc56d3ce4770560ba62fd7f197f1a2e008fd5731ab
+              command: ["/bin/sh", "-ec"]
+              args:
+                - |
+                  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -At <<'SQL'
+                  WITH d AS (
+                    DELETE FROM document_cleanup_candidates
+                    WHERE doc_id LIKE 'db$%' OR doc_id LIKE 'userdata$%'
+                    RETURNING doc_id)
+                  SELECT 'removed internal-doc candidates: ' || count(*) FROM d;
+                  SELECT 'remaining page candidates: ' || count(*) FROM document_cleanup_candidates;
+                  SQL
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              env:
+                - name: HOME
+                  value: "/tmp"
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: affine2-secret-prd
+                      key: DATABASE_URL
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  cpu: 200m
+                  memory: 64Mi
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: tmp
+              emptyDir: {}

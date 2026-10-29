@@ -3,15 +3,26 @@
 Deploy manifests for https://semantic.khi.fi.it (prd) and its hml twin on the KHI K3s cluster.
 This branch (`deploy`) is an orphan branch of the fork: it holds **only** these manifests, never
 application code. The other branches of this repository are an upstream mirror (see DL-880/DL-886).
+Policy since 2026-10-26 (DL-881): **upstream image only**, no fork build — see "Customisation policy".
+Every change made so far is listed in the "Change log" at the end.
 
-| | prd (`prd/`) | hml (`hml/`) |
-|---|---|---|
-| Image | `ghcr.io/toeverything/affine:<tag>` (upstream, no custom build) | same |
-| Server | `affine-prd` (flavor `allinone`, port 3010) + `affine-svc-prd` + `affine-ingress-prd` (`semantic.khi.fi.it`, TLS secret `app-tls`) | `affine-hml` + `affine-svc-hml` + `affine-ingress-hml` (`integration.khi.fi.it`, TLS `app-tls`; host taken over from the Trino ingress on 2026-10-20, DL-884) |
-| Database | `affine` on the shared Postgres prd (`postgresql-server-svc-prd`, managed in the DEVOPS repo) | own `postgres:16` (`postgres-affine-hml`), database `24` |
-| Redis | `redis-affine-prd` | `redis-affine-hml` |
-| State on NFS `192.168.170.200` | `/home/shared/affine/{config,storage,redis}` | `/home/shared/affine/AFFiNE.pro/hml/{config,storage,redis,postgres}` |
-| Secrets | `affine-secret-prd` | `affine-secret-hml`, `postgres-affine-secret-hml` |
+Current state (2026-10-28): prd is being replaced blue/green. The old stack still serves
+semantic.khi.fi.it; the new stack runs next to it and is validated at integration.khi.fi.it until the
+Ingress is switched (see "prd upgrade = blue/green").
+
+| | prd old (`prd/`) — serving semantic | prd new (`prd-v2/`) — in validation | hml (`hml/`) — off |
+|---|---|---|---|
+| Image | `ghcr.io/toeverything/affine:0.24.0` | `0.27.4` pinned by digest | `0.27.4` |
+| Server | `affine-prd` + `affine-svc-prd` + `affine-ingress-prd` (`semantic.khi.fi.it`) | `affine2-prd` + `affine2-svc-prd` + `affine2-ingress-prd` (`integration.khi.fi.it`) | `affine-hml` (0 replicas since 2026-10-26, ingress deleted) |
+| Database | `affine` on the shared Postgres prd | `affine2` on the shared Postgres prd | own `postgres:16` (`postgres-affine-hml`), database `24` |
+| Redis | `redis-affine-prd` (carries the stuck nightly jobs) | `redis-affine2-prd` (fresh) | `redis-affine-hml` |
+| Blobs | NFS `/home/shared/affine/storage/blobs` | **Nexus S3 bucket `khi-affine-prd`** | NFS `/home/shared/affine/AFFiNE.pro/hml/storage` |
+| Other state on NFS `192.168.170.200` | `/home/shared/affine/{config,storage,redis}` | `/home/shared/affine/prd-v2/{storage/avatars,redis}` | `/home/shared/affine/AFFiNE.pro/hml/{config,storage,redis,postgres}` |
+| Config | env vars (0.24) | `config.json` in Secret `affine2-config-prd` | `config.json` in ConfigMap `affine-config-hml` |
+| Secrets | inline env (moved to `affine-secret-prd` only if re-applied) | `affine2-secret-prd`, `affine2-config-prd`, `affine2-s3-prd`, `affine2-watchdog-discord-prd` | `affine-secret-hml`, `postgres-affine-secret-hml`, `affine-watchdog-discord-hml` |
+| CronJobs | — | `affine2-nightly-watchdog-prd` (06:00 UTC), `affine2-reserved-docs-guard-prd` (03:00 UTC) | `affine-nightly-watchdog-hml` (suspended) |
+
+TLS for all hosts: shared Secret `app-tls`.
 
 ## Configuration (0.27+)
 
@@ -24,7 +35,10 @@ mounted with `subPath` into the NFS config dir). Precedence: built-in defaults �
 | `server.host` / `https` / `externalUrl` / `name` | `AFFINE_SERVER_*` | `config.json` |
 | `mailer.SMTP.*` (host, port, username, sender, ignoreTLS, name = HELO) | `MAILER_*` | `config.json`; `MAILER_PASSWORD` stays env (Secret) |
 | `indexer.enabled` | `AFFINE_INDEXER_ENABLED` | `config.json` (`false`, no search provider deployed) |
-| `copilot.enabled` | — | `config.json` (`false` → no AI UI) |
+| `copilot.enabled` | — | `config.json`: hml `false`; prd-v2 **`true`** (needed for read-only MCP, no AI provider key configured) |
+| `storages.blob.storage` | NFS dir | prd-v2: `aws-s3` on Nexus (bucket `khi-affine-prd`, path-style, region `default`); hml: `fs` |
+| `storages.avatar.storage` | NFS dir | `fs` (`~/.affine/storage/avatars`) everywhere — Nexus allows no anonymous read |
+| `job.queue` | — | `config.json`, `removeOnFail: true` (see "Nightly jobs") |
 | `DATABASE_URL`, `REDIS_SERVER_HOST`, `SERVER_FLAVOR`, `NODE_ENV` | env | still env |
 | `AFFINE_ADMIN_EMAIL` / `AFFINE_ADMIN_PASSWORD` | bootstrap of the first user | removed upstream; first user is created on sign-up / Admin Panel |
 | `affine.js`, `affine.env.js`, `.env` in the config dir | legacy (0.17-era) | ignored, left in place |
@@ -39,10 +53,13 @@ commit). Keys:
 - `AFFINE_ADMIN_PASSWORD` — bootstrap password for `AFFINE_ADMIN_EMAIL`, only read on the first start of an empty database.
 - `MAILER_PASSWORD` — empty; the internal relay `192.168.170.20:25` needs no auth.
 
-**Migration note (2026-10-20):** the live deployments still carry these values as plain `env`
-`value:` fields. Applying these manifests to a namespace for the first time requires the Secret to
-exist beforehand, otherwise the pod fails with `CreateContainerConfigError`. hml is switched as part
-of DL-883; prd as part of DL-887.
+**State (2026-10-28):** hml uses its Secrets since DL-883 (2026-10-20). The old prd deployment still
+carries the values as plain `env` `value:` fields and is never re-applied (it is retired after the
+cutover). The new prd stack uses only Secrets, created in-cluster without printing values:
+`affine2-secret-prd` (`DATABASE_URL` → db `affine2`, `MAILER_PASSWORD`), `affine2-config-prd`
+(`config.json`, holds the Nexus key, therefore a Secret and not a ConfigMap), `affine2-s3-prd`
+(same Nexus key for the blob-copy Job; it is the project-wide key also used by Velero) and
+`affine2-watchdog-discord-prd` (same webhook as `hml-capacity-guard`). Templates: `prd-v2/*.example.yml`.
 
 ## Applying
 
@@ -164,6 +181,32 @@ kubectl -n hml logs job/wd-test; kubectl -n hml delete job wd-test
 Validation of `removeOnFail: true` in hml (2026-10-24/25/26): no `duplicated` events, failed set empty after
 each midnight, `expired_at < now()` = 0.
 
+## Document cleanup — upstream bug in 0.27.4 and the reserved-docs guard
+
+0.27 adds a daily document garbage collector: at 02:00 UTC every doc stored in the DB but absent from
+the workspace root `meta.pages` (trash included) is written to `document_cleanup_candidates`; at
+04:00 UTC candidates marked ≥ 30 days ago with no new activity are deleted (snapshots, updates,
+histories). The 30 days are hard-coded (minimum 30) and there is no config key to turn it off.
+
+**Bug (toeverything/AFFiNE#15526):** in 0.27.4 the collector also marks AFFiNE's own internal docs,
+which are never pages: `db$<ws>$folders` (folder tree), `db$<ws>$docProperties`,
+`db$<ws>$pinnedCollections`, `db$<ws>$docCustomPropertyInfo`, `userdata$<user>$<ws>$…`. After 30
+quiet days they would be deleted (symptom reported upstream in #15554, "Folder structure disappeared").
+Fixed upstream by commit `bd095495d` (2026-08-26, `reserved_doc::classify`), shipped in
+0.27.5-beta.1/beta.2, **not yet in a stable release**. First night on prd-v2: 31 internal docs and 36
+real orphan pages marked (orphans = docs missing from `meta.pages`, all inactive > 30 days,
+unreachable from the UI — they go the upstream way; the DL-882 backup holds them).
+
+Workaround: `prd-v2/affine2-reserved-docs-guard.yml`, a CronJob at 03:00 UTC (between mark and
+execute) that deletes the `db$%` / `userdata$%` rows from `document_cleanup_candidates`, so their
+30-day clock never runs out. Applied 2026-10-28; first run removed 31. **Remove it after upgrading to a
+release that contains `bd095495d`** (check: `grep reserved document_cleanup.rs` in the release tag).
+
+The blob collector of 0.27 is separate and behaves: objects without a `blobs` row get one (backfill),
+completed blobs referenced by no doc are deleted after 30 days (`blob_cleanup_candidates`, reason
+`unreferenced_completed_blob`). hml deleted 32 such orphans (58 MB) in its first week, each verified
+as not referenced by any snapshot/update/history.
+
 ## prd upgrade = blue/green with a new stack (`prd-v2/`, DL-887)
 
 Decided 2026-10-26 (upstream-only, no fork): instead of upgrading the running prd in place, a second
@@ -172,6 +215,16 @@ upgraded to 0.27.4, validated at **https://integration.khi.fi.it** (taken back f
 scaled to 0 for the duration), and only then takes over **https://semantic.khi.fi.it** by switching
 the Ingress. The old stack stays untouched and runnable until it is deleted = rollback is "switch the
 Ingress back". Manifests in `prd-v2/`; the old stack's manifests stay in `prd/` until cleanup.
+
+**Status:** phases 0-3 executed on 2026-10-26 (17:00-17:30 UTC), phase 4 (validation) running since.
+Restore of `affine2` 1 min 56 s (52 users, 18 workspaces, 2223 snapshots, 895 blobs, 8472 histories);
+the 4 migration Jobs took 2 min (120 migrations applied, 0 failed); blob copy 19 min (2568 objects,
+895 Content-Types set, 0 skips). Verified end to end: an image of a publicly shared doc fetched
+anonymously through integration.khi.fi.it answers 302 → presigned `s3.nexus.mpcdf.mpg.de` URL → 200
+`image/png` with the right size. Nights of 10-27/28/29: 10 nightly jobs added, 8 completed, the 2
+expected failures removed, failed set empty; histories 8472 → 382 (older than 30 days purged, accepted:
+31 days of ingress logs show no request to `/histories/` on semantic); blob backfill 895 → 2542 rows.
+The pods survived the Debian 13 node upgrades of 2026-10-27/28 (restarts only).
 
 What is new in the stack (vs `prd/`):
 
@@ -191,8 +244,8 @@ S3 facts verified on 2026-10-26: Nexus (Ceph RGW) accepts `put-bucket-cors`; the
 S3 (not configurable), so the browser fetches from `s3.nexus.mpcdf.mpg.de` and the bucket CORS rule
 (`AllowedOrigins` semantic + integration, `GET/HEAD/PUT`) is mandatory. The object's own
 `Content-Type` is what the browser sees, hence `blob-copy-job.yml` sets it from `blobs.mime`.
-Anonymous read is not possible on Nexus (no bucket policy allowed from our key — untested, blocked), so
-avatars stay on `fs`. 0.27 also runs a **blob reconciliation + cleanup**: objects without a `blobs`
+Anonymous read from Nexus was not tested (setting a public bucket policy was not attempted), so
+avatars (2 files, served by the server under `/api/avatars/`) stay on `fs`. 0.27 also runs a **blob reconciliation + cleanup**: objects without a `blobs`
 row get a row (`backfill_missing_blob_metadata`), and completed blobs referenced by no doc are
 deleted after a 30-day grace (`blob_cleanup_candidates`, reason `unreferenced_completed_blob`;
 hml deleted 32 orphans = 58 MB in its first week, verified not referenced by any snapshot/update).
@@ -227,7 +280,7 @@ and apply the two-owners fix for the 4 docs (section "0.27 migration blocker") *
 
 `affine2-migration-job.yml` four times, bumping `image` each time: 0.24.1 → 0.25.7 → 0.26.3 → 0.27.4
 (digests in the file header). Then `kubectl apply -f prd-v2/affine2-deployment.yml -f prd-v2/affine2-ingress.yml
--f prd-v2/affine2-nightly-watchdog.yml`. Validate at https://integration.khi.fi.it: login, docs, images /
+-f prd-v2/affine2-nightly-watchdog.yml -f prd-v2/affine2-reserved-docs-guard.yml`. Validate at https://integration.khi.fi.it: login, docs, images /
 attachments (must load from a `s3.nexus.mpcdf.mpg.de` URL in the network tab), history panel, upload,
 MCP credential, nightly events after the first midnight (`XREVRANGE affine_job:nightly:events` on
 `redis-affine2-prd`), server log clean.
@@ -250,6 +303,8 @@ are rebuilt from the live stack). Do not configure anything in the Admin Panel; 
    `kubectl -n prd scale deploy affine2-prd --replicas=1`.
 7. Smoke test on https://semantic.khi.fi.it, tell desktop users: clients < 0.26 must update (0.27 server refuses them).
    `VACUUM FULL snapshot_histories` the morning after the first nightly run.
+8. The two CronJobs of the stack (`affine2-nightly-watchdog-prd`, `affine2-reserved-docs-guard-prd`) need no
+   change: they read `affine2-secret-prd`, whose database stays `affine2`.
 
 Rollback (any time before cleanup): delete `affine2-ingress-prd`, re-apply `prd/affine-ingress.yml`,
 `kubectl -n prd scale deploy affine-prd --replicas=1`. Edits made on the new stack after the cutover are lost.
@@ -261,6 +316,51 @@ Delete `deploy/affine-prd`, `deploy/redis-affine-prd`, `svc/affine-svc-prd`, the
 after one more dump into the cold backup dir; move `/home/shared/affine/{storage,redis,config}` to the
 cold backup; move `prd-v2/` to `prd/` in this branch; restore hml (scale back up, hml gets a new
 sub-path-free hostname or stays off — decide then).
+
+## Customisation policy (DL-881, 2026-10-26)
+
+Upstream image only. A customisation climbs a level only when the previous one cannot do it:
+
+1. `config.json` / Admin Panel / Ingress — no code (server name, mail, storage, feature flags).
+2. Overlay image: `FROM ghcr.io/toeverything/affine:<tag>` plus patches applied to the built `dist/`,
+   kept in this branch; builds in seconds on the ARC runners; a patch that no longer applies fails the build.
+3. Source fork with a full build — only for Rust/native or schema changes, decided per feature. There is
+   no build capacity for it today (GitHub-hosted runners blocked, ARC limited to 5 Gi per runner).
+
+The previous fork (default branch `hml`, 0.17.0, 3815 commits behind) is not used by anything since
+2025-09-29; of its 7 customisations 4 are native in 0.27, the RAG one is obsolete, only "hide Download
+App" has no equivalent.
+
+## Known limitations (accepted)
+
+- **History of versions: 30 days.** `historyPeriod` of the self-host plan is fixed in Rust
+  (`selfhost_free`). prd had unlimited history only by accident (nightly cleanup stuck since 2025-11-17).
+- **Quotas are not configurable** in 0.27 (the `features` table is gone). The built-in self-host plan
+  (100 MB per blob, 100 GB storage, 10 members, shown as "Pro") equals what prd had forced in the DB.
+- **Login dialog text** "Sign in to AFFiNE" / "AFFiNE Self-hosted (<server.name>)": the prefix is
+  hard-coded in the frontend; only `server.name` is configurable. Left as is (2026-10-26).
+- **Desktop clients < 0.26** cannot connect to a 0.27 server; the web app is unaffected.
+- **MCP** is read-only (`read_document`, `doc_search`); write tools are gated to upstream canary.
+  `doc_search` answers `SEARCH_UNAVAILABLE` (no indexer, no pgvector).
+- **Blobs on Nexus are not backed up** by any job of ours (Nexus is a replicated Ceph cluster run by MPCDF).
+
+## Change log (DL-880)
+
+| Date | Where | Change | Ref |
+|---|---|---|---|
+| 2026-10-19 | — | Analysis: prd and hml on upstream 0.24.0, fork dead, nightly jobs stuck since 2025-11-17, history 30 d; plan in DL-880 + sub-tasks | DL-880 |
+| 2026-10-20 | prd (read) → hml | Backup of prd state (`/home/shared/devops/kubernets/affine/2026-10-20/`, 6.6 G) and restore into hml, rehearsed twice | DL-882, DEVOPS `docs/runbooks/affine-backup-restore.md` (PR #77) |
+| 2026-10-20 | repo | Manifests extracted from the cluster into this orphan branch; credentials moved to `*.example.yml` + Secrets | — |
+| 2026-10-20 | hml | 0.24.0 → 0.24.1 → 0.25.7 → 0.26.3 with a migration Job per step (image does not migrate on start); SMTP HELO name set (`AFFiNE Server` was rejected by the relay); `MAILER_IGNORE_TLS`; legacy trigger `update_feature` dropped | DL-883 |
+| 2026-10-20 | hml | 0.27.4 with `config.json`; two-owner fix for 4 docs before the 0.27 migration; `integration.khi.fi.it` taken from the Trino ingress (sub-path hosting rejected) | DL-884, DEVOPS PR #78 |
+| 2026-10-22 | hml | MCP tested end to end (copilot enabled temporarily, reverted, test credential revoked) | DL-884 |
+| 2026-10-23 | hml | `job.queue.removeOnFail: true`; stuck failed set cleared | DL-885, commit `c995057` |
+| 2026-10-26 | hml | removeOnFail validated over 3 nights; DB-symptom watchdog CronJob | DL-885, commit `3b900a2` |
+| 2026-10-26 | — | Decision: upstream only, no fork; prd upgrade blue/green, validation at integration, cutover by Ingress | DL-881, DL-887 |
+| 2026-10-26 | Nexus | Bucket `khi-affine-prd` created, CORS for semantic + integration (GET/HEAD/PUT) | DL-887 |
+| 2026-10-26 | hml | Scaled to 0, ingress deleted, watchdog suspended (frees integration) | DL-887 |
+| 2026-10-26 | prd (new) | Stack `affine2`: Secrets, NFS dirs, DB `affine2` restored + fixes, 4 migration Jobs, blobs copied to Nexus, server + ingress + watchdog; `affine2` added to the Postgres backup allow-list | DL-887, commit `873662727e`, DEVOPS PR #87 |
+| 2026-10-28 | prd (new) | Reserved-docs guard CronJob (workaround for upstream #15526) | DL-887 |
 
 ## Not in this branch
 
